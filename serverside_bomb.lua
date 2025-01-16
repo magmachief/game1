@@ -1,19 +1,85 @@
 -- Services
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
--- RemoteEvent for sending bomb info to clients
-local BombInfoEvent = Instance.new("RemoteEvent")
-BombInfoEvent.Name = "BombInfoEvent"
-BombInfoEvent.Parent = ReplicatedStorage
+local PathfindingService = game:GetService("PathfindingService")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
 
 -- Variables
-local bomb = nil
-local bombHolder = nil
-local bombTimer = 0
+local autoDodgeEnabled = true
+local dodgeDistance = 20 -- Distance to maintain from bomb holders
+local mapBounds = {MinX = -100, MaxX = 100, MinZ = -100, MaxZ = 100} -- Replace with your map's actual bounds
 
--- Function to find the bomb in the workspace or on a player
+-- Helper Functions
+local function isWithinBounds(position)
+    return position.X >= mapBounds.MinX and position.X <= mapBounds.MaxX
+        and position.Z >= mapBounds.MinZ and position.Z <= mapBounds.MaxZ
+end
+
+local function moveToSafePosition(targetPosition)
+    local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+    if not humanoid then return end
+
+    local path = PathfindingService:CreatePath({
+        AgentRadius = 2,
+        AgentHeight = 5,
+        AgentCanJump = true,
+        AgentJumpHeight = 10,
+        AgentMaxSlope = 45,
+    })
+
+    local success, err = pcall(function()
+        path:ComputeAsync(LocalPlayer.Character.HumanoidRootPart.Position, targetPosition)
+    end)
+    if not success then
+        warn("Pathfinding failed: " .. err)
+        return
+    end
+
+    for _, waypoint in ipairs(path:GetWaypoints()) do
+        humanoid:MoveTo(waypoint.Position)
+        humanoid.MoveToFinished:Wait()
+    end
+end
+
+-- Auto Dodge Players with Bombs
+local function dodgePlayersWithBomb()
+    if not autoDodgeEnabled then return end
+
+    local bombHolders = {}
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Bomb") then
+            table.insert(bombHolders, player)
+        end
+    end
+
+    if #bombHolders > 0 then
+        local safeDirection = Vector3.new(0, 0, 0)
+        for _, bombHolder in ipairs(bombHolders) do
+            local bombHolderRoot = bombHolder.Character and bombHolder.Character:FindFirstChild("HumanoidRootPart")
+            local localRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if bombHolderRoot and localRoot then
+                local direction = (localRoot.Position - bombHolderRoot.Position).Unit * dodgeDistance
+                safeDirection = safeDirection + direction
+            end
+        end
+
+        local safePosition = LocalPlayer.Character.HumanoidRootPart.Position + safeDirection
+        if isWithinBounds(safePosition) then
+            moveToSafePosition(safePosition)
+        else
+            -- Adjust position to stay within bounds
+            safePosition = Vector3.new(
+                math.clamp(safePosition.X, mapBounds.MinX, mapBounds.MaxX),
+                safePosition.Y,
+                math.clamp(safePosition.Z, mapBounds.MinZ, mapBounds.MaxZ)
+            )
+            moveToSafePosition(safePosition)
+        end
+    end
+end
+
+-- Bomb Timer Detection
 local function findBomb()
     for _, player in ipairs(Players:GetPlayers()) do
         if player.Character and player.Character:FindFirstChild("Bomb") then
@@ -28,31 +94,24 @@ local function findBomb()
     return nil, nil
 end
 
--- Function to track bomb and update timer
-local function trackBomb()
-    bomb, bombHolder = findBomb()
-    if bomb then
-        if bomb:FindFirstChild("Timer") then
-            bombTimer = bomb.Timer.Value -- Use the game's timer if it exists
+local function monitorBombTimer()
+    while true do
+        local bomb, bombHolder = findBomb()
+        if bomb and bomb:FindFirstChild("Timer") then
+            print("Bomb Timer: " .. bomb.Timer.Value .. " seconds")
+        elseif bombHolder then
+            print(bombHolder.Name .. " is holding the bomb, but no timer detected!")
         else
-            bombTimer = 10 -- Fallback to a default timer
+            print("No bomb detected!")
         end
-    else
-        bombHolder = nil
-        bombTimer = 0
+        task.wait(1)
     end
 end
 
--- Main loop to update bomb information
-while true do
-    trackBomb()
-    if bombHolder then
-        BombInfoEvent:FireAllClients(bombHolder, bombTimer) -- Send data to clients
-    else
-        BombInfoEvent:FireAllClients(nil, 0) -- No bomb detected
-    end
-    wait(1) -- Update every second
-    if bombTimer > 0 then
-        bombTimer = bombTimer - 1
-    end
-end
+-- Main Update Loop
+RunService.Heartbeat:Connect(function()
+    dodgePlayersWithBomb()
+end)
+
+-- Start Bomb Timer Monitoring
+monitorBombTimer()
