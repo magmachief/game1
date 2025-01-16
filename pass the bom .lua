@@ -1,4 +1,5 @@
- local ScreenGui = Instance.new("ScreenGui")
+-- Create a new ScreenGui
+local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ScreenGui"
 ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 ScreenGui.ResetOnSpawn = false
@@ -13,24 +14,40 @@ Toggle.Size = UDim2.new(0, 50, 0, 50) -- Smaller size for a compact circular but
 Toggle.Image = "rbxassetid://18594014746" -- Your asset ID
 Toggle.ScaleType = Enum.ScaleType.Fit
 
+-- Make the button circular
 local Corner = Instance.new("UICorner")
-Corner.CornerRadius = UDim.new(0.5, 0) -- Make the button circular
+Corner.CornerRadius = UDim.new(0.5, 0)
 Corner.Parent = Toggle
 
+-- Load the OrionLib UI Library
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/magmachief/Library-Ui/main/Orion%20Lib%20Transparent%20%20.lua"))()
 
+-- Create a window using OrionLib
 local Window = OrionLib:MakeWindow({Name = "Yon Menu", HidePremium = false, IntroText = "Yon Menu", SaveConfig = true, ConfigFolder = "YonMenu"})
 
+-- Define variables for toggles
 local AntiSlipperyEnabled = false
 local RemoveHitboxEnabled = false
 local AutoPassEnabled = false
 local SecureSpinEnabled = false
 local AutoEmoteEnabled = false
 local OwnedEmotes = {}
-local SelectedEmote = "/e dance" -- Default emote
+local SelectedEmote = ""
 
+-- Function to fetch owned emotes (placeholder, replace with actual method to fetch emotes)
+local function getPlayerOwnedEmotes(player)
+    -- Placeholder for fetching emotes, replace with actual implementation
+    -- Assuming the player has these emotes for example purposes
+    return {"Dance", "Cheer", "Laugh", "Wave"}
+end
+
+-- Populate the OwnedEmotes list
+OwnedEmotes = getPlayerOwnedEmotes(game.Players.LocalPlayer)
+
+-- Create a tab for the main features
 local Tab = Window:MakeTab({Name = "Main", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 
+-- Add a toggle for Anti Slippery
 Tab:AddToggle({
     Name = "Anti Slippery",
     Default = false,
@@ -61,6 +78,7 @@ Tab:AddToggle({
     end
 })
 
+-- Add a toggle for Remove Hitbox
 Tab:AddToggle({
     Name = "Remove Hitbox",
     Default = false,
@@ -86,6 +104,7 @@ Tab:AddToggle({
     end
 })
 
+-- Add a toggle for Auto Pass Closest Player
 Tab:AddToggle({
     Name = "Auto Pass Closest Player",
     Default = false,
@@ -155,6 +174,7 @@ Tab:AddToggle({
     end
 })
 
+-- Add a toggle for Secure Spin
 Tab:AddToggle({
     Name = "Secure Spin",
     Default = false,
@@ -163,6 +183,7 @@ Tab:AddToggle({
     end
 })
 
+-- Add a toggle for Auto Emote on Kill
 Tab:AddToggle({
     Name = "Auto Emote on Kill",
     Default = false,
@@ -171,23 +192,17 @@ Tab:AddToggle({
     end
 })
 
+-- Add a dropdown to select an emote
 Tab:AddDropdown({
     Name = "Select Emote",
-    Default = "Dance",
-    Options = {"Dance", "Cheer", "Laugh", "Wave"},
+    Default = "",
+    Options = OwnedEmotes,
     Callback = function(option)
-        if option == "Dance" then
-            SelectedEmote = "/e dance"
-        elseif option == "Cheer" then
-            SelectedEmote = "/e cheer"
-        elseif option == "Laugh" then
-            SelectedEmote = "/e laugh"
-        elseif option == "Wave" then
-            SelectedEmote = "/e wave"
-        end
+        SelectedEmote = option
     end
 })
 
+-- Create an update tab
 local UpdateTab = Window:MakeTab({Name = "Update", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 
 UpdateTab:AddLabel("Update Logs")
@@ -197,8 +212,9 @@ UpdateTab:AddLabel("- Improved Secure Spin functionality")
 UpdateTab:AddLabel("- Removed bomb color picker")
 UpdateTab:AddLabel("- Removed vxghmod button")
 
+-- Toggle the visibility of the menu
 Toggle.MouseButton1Click:Connect(function() 
-    ScreenGui.Enabled = not ScreenGui.Enabled -- Toggle the visibility of the menu
+    ScreenGui.Enabled = not ScreenGui.Enabled
 end)
 
 -- Destroy script when UI is destroyed 
@@ -206,6 +222,7 @@ ScreenGui.Destroying:Connect(function()
     script:Destroy() 
 end)
 
+-- Initialize the OrionLib UI
 OrionLib:Init()
 
 -- Secure Spin Functionality
@@ -245,9 +262,9 @@ local function onPlayerAdded(player)
     player.CharacterAdded:Connect(function(character)
         local humanoid = character:WaitForChild("Humanoid")
         humanoid.Died:Connect(function()
-            if AutoEmoteEnabled and player == game.Players.LocalPlayer then
+            if AutoEmoteEnabled and character == game.Players.LocalPlayer.Character and SelectedEmote ~= "" then
                 -- Trigger selected emote
-                game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(SelectedEmote, "All")
+                game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer("/e " .. SelectedEmote, "All")
             end
         end)
     end)
