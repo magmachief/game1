@@ -115,7 +115,7 @@ Tab:AddToggle({
                             end
                         end
 
-                        -- Auto-pass the closest player by moving towards them and spinning
+                        -- Auto-pass the closest player by moving towards them and spinning when very close
                         if closestPlayer then
                             warn("Hitting " .. closestPlayer.Name)
                             
@@ -123,26 +123,26 @@ Tab:AddToggle({
                             local targetPosition = closestPlayer.Character.HumanoidRootPart.Position
                             local function moveToTarget()
                                 while (LocalPlayer.Character.HumanoidRootPart.Position - targetPosition).magnitude > 5 do
-                                    LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(LocalPlayer.Character.HumanoidRootPart.Position, targetPosition)
                                     LocalPlayer.Character:MoveTo(targetPosition)
                                     wait(0.1)
                                 end
                             end
 
-                            -- Spin when close to the player
+                            -- Spin when very close to the player
                             local function spinCharacter()
                                 while (LocalPlayer.Character.HumanoidRootPart.Position - targetPosition).magnitude <= 5 do
-                                    LocalPlayer.Character.HumanoidRootPart.CFrame = LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(30), 0)
-                                    wait(0.1)
+                                    LocalPlayer.Character.HumanoidRootPart.CFrame = LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(10), 0)
+                                    wait(0.2) -- Slower spin to seem legit
                                 end
                             end
 
                             -- Move to the target and then spin
                             moveToTarget()
-                            spinCharacter()
-
-                            -- Fire the bomb event
-                            BombEvent:FireServer(closestPlayer.Character, closestPlayer.Character:FindFirstChild("CollisionPart"))
+                            if (LocalPlayer.Character.HumanoidRootPart.Position - targetPosition).magnitude <= 5 then
+                                spinCharacter()
+                                -- Fire the bomb event
+                                BombEvent:FireServer(closestPlayer.Character, closestPlayer.Character:FindFirstChild("CollisionPart"))
+                            end
                         else
                             print("No closest player found")
                         end
@@ -152,6 +152,10 @@ Tab:AddToggle({
         end
     end
 })
+
+local UpdateTab = Window:MakeTab({Name = "Update", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+
+UpdateTab:AddLabel("Fixing auto pass the bomb")
 
 Toggle.MouseButton1Click:Connect(function() 
     ScreenGui.Enabled = not ScreenGui.Enabled -- Toggle the visibility of the menu
