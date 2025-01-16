@@ -3,16 +3,14 @@ local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local PathfindingService = game:GetService("PathfindingService")
 local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local LocalPlayer = Players.LocalPlayer
 
 -- Variables
 local autoDodgeEnabled = true
 local collectCoinsEnabled = true
 local autoPassEnabled = true
-local secureSpinEnabled = false
 local dodgeDistance = 20
-local secureSpinDistance = 5
 local mapBounds = {MinX = -100, MaxX = 100, MinZ = -100, MaxZ = 100}
 local stuckCheckInterval = 1
 local stuckThreshold = 5
@@ -27,7 +25,10 @@ end
 
 local function moveToSafePosition(targetPosition)
     local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
-    if not humanoid then return end
+    local humanoidRootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not humanoid or not humanoidRootPart then
+        return
+    end
 
     local path = PathfindingService:CreatePath({
         AgentRadius = 2,
@@ -38,7 +39,7 @@ local function moveToSafePosition(targetPosition)
     })
 
     local success, err = pcall(function()
-        path:ComputeAsync(LocalPlayer.Character.HumanoidRootPart.Position, targetPosition)
+        path:ComputeAsync(humanoidRootPart.Position, targetPosition)
     end)
     if not success then
         warn("Pathfinding failed: " .. err)
@@ -49,56 +50,6 @@ local function moveToSafePosition(targetPosition)
         humanoid:MoveTo(waypoint.Position)
         humanoid.MoveToFinished:Wait()
     end
-end
-
-local function findBomb()
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player.Character and player.Character:FindFirstChild("Bomb") then
-            return player.Character:FindFirstChild("Bomb"), player
-        end
-    end
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("Part") and obj.Name == "Bomb" then
-            return obj, nil
-        end
-    end
-    return nil, nil
-end
-
--- Bomb Timer Detection
-local function monitorBombTimer()
-    while true do
-        local bomb, bombHolder = findBomb()
-        if bomb and bomb:FindFirstChild("Timer") then
-            print("Bomb Timer: " .. bomb.Timer.Value .. " seconds")
-        elseif bombHolder then
-            print(bombHolder.Name .. " is holding the bomb, but no timer detected!")
-        else
-            print("No bomb detected!")
-        end
-        task.wait(1)
-    end
-end
-
--- Anti-Stuck Mechanism
-local function unstickPlayer()
-    local character = LocalPlayer.Character
-    if not character then return end
-
-    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-    if not humanoidRootPart then return end
-
-    if lastPosition and humanoidRootPart.Position == lastPosition then
-        stuckTime = stuckTime + stuckCheckInterval
-        if stuckTime >= stuckThreshold then
-            humanoidRootPart.CFrame = humanoidRootPart.CFrame + Vector3.new(0, 10, 0)
-            print("Unsticking player...")
-            stuckTime = 0
-        end
-    else
-        stuckTime = 0
-    end
-    lastPosition = humanoidRootPart.Position
 end
 
 -- Auto Dodge Bomb Holders
@@ -123,18 +74,43 @@ local function dodgePlayersWithBomb()
             end
         end
 
-        local safePosition = LocalPlayer.Character.HumanoidRootPart.Position + safeDirection
+        local humanoidRootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not humanoidRootPart then return end
+
+        local safePosition = humanoidRootPart.Position + safeDirection
         if isWithinBounds(safePosition) then
             moveToSafePosition(safePosition)
         else
+            -- Adjust position to stay within bounds
             safePosition = Vector3.new(
                 math.clamp(safePosition.X, mapBounds.MinX, mapBounds.MaxX),
-                safePosition.Y,
+                humanoidRootPart.Position.Y,
                 math.clamp(safePosition.Z, mapBounds.MinZ, mapBounds.MaxZ)
             )
             moveToSafePosition(safePosition)
         end
     end
+end
+
+-- Anti-Stuck Mechanism
+local function unstickPlayer()
+    local character = LocalPlayer.Character
+    if not character then return end
+
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return end
+
+    if lastPosition and humanoidRootPart.Position == lastPosition then
+        stuckTime = stuckTime + stuckCheckInterval
+        if stuckTime >= stuckThreshold then
+            humanoidRootPart.CFrame = humanoidRootPart.CFrame + Vector3.new(0, 10, 0)
+            print("Unsticking player...")
+            stuckTime = 0
+        end
+    else
+        stuckTime = 0
+    end
+    lastPosition = humanoidRootPart.Position
 end
 
 -- Auto Pass Bomb
@@ -164,27 +140,26 @@ local function autoPassBomb()
     end
 end
 
--- Coin Collector
-local function collectCoins()
-    if not collectCoinsEnabled then return end
-
-    local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
-    if humanoid then
-        for _, part in ipairs(workspace:GetChildren()) do
-            if part:IsA("Part") and part.Name == "Coin" then
-                humanoid:MoveTo(part.Position)
-                task.wait(1)
-            end
+-- Monitor Bomb Timer
+local function monitorBombTimer()
+    while true do
+        local bomb, bombHolder = findBomb()
+        if bomb and bomb:FindFirstChild("Timer") then
+            print("Bomb Timer: " .. bomb.Timer.Value .. " seconds")
+        elseif bombHolder then
+            print(bombHolder.Name .. " is holding the bomb, but no timer detected!")
+        else
+            print("No bomb detected!")
         end
+        task.wait(1)
     end
 end
 
--- Main Update Loop
+-- Main Loop
 RunService.Heartbeat:Connect(function()
     dodgePlayersWithBomb()
     autoPassBomb()
     unstickPlayer()
-    collectCoins()
 end)
 
 -- Start Monitoring Bomb Timer
