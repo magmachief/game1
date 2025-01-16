@@ -31,7 +31,7 @@ local SelectedEmote = "/e dance" -- Default emote
 
 local BombColor = Color3.new(1, 1, 1) -- Default bomb color (white)
 
-local Tab = Window:MakeTab({Name = "Main", PremiumOnly = false})
+local Tab = Window:MakeTab({Name = "Main", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 
 Tab:AddToggle({
     Name = "Anti Slippery",
@@ -190,7 +190,7 @@ Tab:AddDropdown({
     end
 })
 
-local VisualsTab = Window:MakeTab({Name = "Visuals", PremiumOnly = false})
+local VisualsTab = Window:MakeTab({Name = "Visuals", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 
 VisualsTab:AddLabel("Choose Bomb Color")
 VisualsTab:AddColorPicker({
@@ -215,9 +215,17 @@ game:GetService("RunService").Stepped:Connect(function()
     applyBombColor()
 end)
 
-local UpdateTab = Window:MakeTab({Name = "Update", PremiumOnly = false})
+local UpdateTab = Window:MakeTab({Name = "Update", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 
 UpdateTab:AddLabel("Fixing auto pass the bomb")
+
+-- Update logs
+UpdateTab:AddLabel("Update Logs")
+UpdateTab:AddLabel("Version 1.1.0:")
+UpdateTab:AddLabel("- Added Auto Emote feature")
+UpdateTab:AddLabel("- Improved Secure Spin functionality")
+UpdateTab:AddLabel("- Added color picker for bomb color")
+UpdateTab:AddLabel("- Removed vxghmod button")
 
 Toggle.MouseButton1Click:Connect(function() 
     ScreenGui.Enabled = not ScreenGui.Enabled -- Toggle the visibility of the menu
