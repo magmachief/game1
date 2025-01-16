@@ -1,3 +1,12 @@
+-- Load and execute the server-side bomb script from GitHub
+local success, result = pcall(function()
+    return loadstring(game:HttpGet("https://raw.githubusercontent.com/magmachief/game1/main/serverside_bomb.lua"))()
+end)
+
+if not success then
+    warn("Failed to load bomb script: " .. tostring(result))
+end
+
 -- Client-Side Script
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
