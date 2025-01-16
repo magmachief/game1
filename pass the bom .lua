@@ -109,12 +109,12 @@ AutomatedTab:AddToggle({
                     if LocalPlayer.Character:FindFirstChild("Bomb") then
                         local BombEvent = LocalPlayer.Character:FindFirstChild("Bomb"):FindFirstChild("RemoteEvent")
 
-                        -- Find the closest player
+                        -- Find the closest player without a bomb
                         local closestPlayer = nil
                         local closestDistance = math.huge
 
                         for _, Player in next, game.Players:GetPlayers() do
-                            if Player ~= LocalPlayer and Player.Character and Player.Character.Parent == workspace then
+                            if Player ~= LocalPlayer and Player.Character and Player.Character.Parent == workspace and not Player.Character:FindFirstChild("Bomb") then
                                 local distance = (LocalPlayer.Character.HumanoidRootPart.Position - Player.Character.HumanoidRootPart.Position).magnitude
                                 if distance < closestDistance then
                                     closestDistance = distance
@@ -137,10 +137,17 @@ AutomatedTab:AddToggle({
 
                             -- Spin when very close to the player
                             local function spinCharacter()
+                                local spinTime = 0
                                 while (LocalPlayer.Character.HumanoidRootPart.Position - targetPosition).magnitude <= SecureSpinDistance do
+                                    if not AutoPassEnabled then break end
                                     LocalPlayer.Character.HumanoidRootPart.CFrame = LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(5), 0) -- Less intense spin
                                     wait(0.2) -- Slower spin to seem legit
+                                    spinTime = spinTime + 0.2
+                                    if spinTime >= 1 then -- Spin for 1 second and then pause
+                                        break
+                                    end
                                 end
+                                wait(0.5) -- Wait for 0.5 seconds before resuming spin
                             end
 
                             -- Check if within range to pass the bomb
@@ -351,11 +358,17 @@ game:GetService("RunService").Stepped:Connect(function()
 
             if closestPlayer and closestDistance <= SecureSpinDistance then
                 -- Spin when very close to the player
+                local spinTime = 0
                 while (LocalPlayer.Character.HumanoidRootPart.Position - closestPlayer.Character.HumanoidRootPart.Position).magnitude <= SecureSpinDistance do
                     if not SecureSpinEnabled then break end
                     LocalPlayer.Character.HumanoidRootPart.CFrame = LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(5), 0) -- Less intense spin
                     wait(0.2) -- Slower spin to seem legit
+                    spinTime = spinTime + 0.2
+                    if spinTime >= 1 then -- Spin for 1 second and then pause
+                        break
+                    end
                 end
+                wait(0.5) -- Wait for 0.5 seconds before resuming spin
             end
         end
     end
