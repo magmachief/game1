@@ -35,6 +35,7 @@ local SecureSpinEnabled = false
 local SecureSpinDistance = 5 -- Default secure spin distance
 local AutoDodgePlayersEnabled = false
 local PlayerDodgeDistance = 15 -- Default distance to dodge players
+local SafeArea = Vector3.new(100, 100, 100) -- Define a safe area boundary
 
 -- Create tabs for different categories
 local VisualTab = Window:MakeTab({Name = "Visual", Icon = "rbxassetid://4483345998", PremiumOnly = false})
@@ -255,7 +256,12 @@ local function dodgeMeteor(meteor)
     if Character and Character:FindFirstChild("HumanoidRootPart") then
         local humanoidRootPart = Character.HumanoidRootPart
         local dodgeDirection = (humanoidRootPart.Position - meteor.Position).unit * DodgeDistance
-        humanoidRootPart.CFrame = humanoidRootPart.CFrame + dodgeDirection
+        local targetPosition = humanoidRootPart.Position + dodgeDirection
+
+        -- Ensure the target position is within the safe area
+        if math.abs(targetPosition.X) <= SafeArea.X and math.abs(targetPosition.Z) <= SafeArea.Z then
+            humanoidRootPart.Parent:FindFirstChild("Humanoid"):MoveTo(targetPosition)
+        end
     end
 end
 
@@ -278,7 +284,12 @@ local function dodgePlayer(player)
     if Character and Character:FindFirstChild("HumanoidRootPart") then
         local humanoidRootPart = Character.HumanoidRootPart
         local dodgeDirection = (humanoidRootPart.Position - player.Character.HumanoidRootPart.Position).unit * PlayerDodgeDistance
-        humanoidRootPart.CFrame = humanoidRootPart.CFrame + dodgeDirection
+        local targetPosition = humanoidRootPart.Position + dodgeDirection
+
+        -- Ensure the target position is within the safe area
+        if math.abs(targetPosition.X) <= SafeArea.X and math.abs(targetPosition.Z) <= SafeArea.Z then
+            humanoidRootPart.Parent:FindFirstChild("Humanoid"):MoveTo(targetPosition)
+        end
     end
 end
 
