@@ -140,27 +140,25 @@ local function autoPassBomb()
     end
 end
 
--- Monitor Bomb Timer
-local function monitorBombTimer()
-    while true do
-        local bomb, bombHolder = findBomb()
-        if bomb and bomb:FindFirstChild("Timer") then
-            print("Bomb Timer: " .. bomb.Timer.Value .. " seconds")
-        elseif bombHolder then
-            print(bombHolder.Name .. " is holding the bomb, but no timer detected!")
-        else
-            print("No bomb detected!")
+-- Coin Collector
+local function collectCoins()
+    if not collectCoinsEnabled then return end
+
+    local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+    if humanoid then
+        for _, part in ipairs(workspace:GetChildren()) do
+            if part:IsA("Part") and part.Name == "Coin" then
+                humanoid:MoveTo(part.Position)
+                task.wait(1)
+            end
         end
-        task.wait(1)
     end
 end
 
--- Main Loop
+-- Main Update Loop
 RunService.Heartbeat:Connect(function()
     dodgePlayersWithBomb()
     autoPassBomb()
     unstickPlayer()
+    collectCoins()
 end)
-
--- Start Monitoring Bomb Timer
-monitorBombTimer()
