@@ -22,10 +22,9 @@ Corner.Parent = Toggle
 -- Load the OrionLib UI Library
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/magmachief/Library-Ui/main/Orion%20Lib%20Transparent%20%20.lua"))()
 
--- Create a window using OrionLib
 local Window = OrionLib:MakeWindow({Name = "Yon Menu", HidePremium = false, IntroText = "Yon Menu", SaveConfig = true, ConfigFolder = "YonMenu"})
 
--- Define variables for toggles
+-- Define variables for toggles and settings
 local AutoDodgeEnabled = false
 local DodgeDistance = 10 -- Default distance to dodge
 local AntiSlipperyEnabled = false
@@ -38,6 +37,39 @@ local PlayerDodgeDistance = 15 -- Default distance to dodge players
 local CollectCoinsEnabled = false
 local SafeArea = {MinX = -100, MaxX = 100, MinZ = -100, MaxZ = 100} -- Define a safe area boundary
 
+-- Load settings from saved configuration
+local function loadSettings()
+    AutoDodgeEnabled = OrionLib:GetSetting("AutoDodgeEnabled", false)
+    DodgeDistance = OrionLib:GetSetting("DodgeDistance", 10)
+    AntiSlipperyEnabled = OrionLib:GetSetting("AntiSlipperyEnabled", false)
+    RemoveHitboxEnabled = OrionLib:GetSetting("RemoveHitboxEnabled", false)
+    AutoPassEnabled = OrionLib:GetSetting("AutoPassEnabled", false)
+    SecureSpinEnabled = OrionLib:GetSetting("SecureSpinEnabled", false)
+    SecureSpinDistance = OrionLib:GetSetting("SecureSpinDistance", 5)
+    AutoDodgePlayersEnabled = OrionLib:GetSetting("AutoDodgePlayersEnabled", false)
+    PlayerDodgeDistance = OrionLib:GetSetting("PlayerDodgeDistance", 15)
+    CollectCoinsEnabled = OrionLib:GetSetting("CollectCoinsEnabled", false)
+end
+
+-- Save settings to configuration
+local function saveSettings()
+    OrionLib:SaveSetting("AutoDodgeEnabled", AutoDodgeEnabled)
+    OrionLib:SaveSetting("DodgeDistance", DodgeDistance)
+    OrionLib:SaveSetting("AntiSlipperyEnabled", AntiSlipperyEnabled)
+    OrionLib:SaveSetting("RemoveHitboxEnabled", RemoveHitboxEnabled)
+    OrionLib:SaveSetting("AutoPassEnabled", AutoPassEnabled)
+    OrionLib:SaveSetting("SecureSpinEnabled", SecureSpinEnabled)
+    OrionLib:SaveSetting("SecureSpinDistance", SecureSpinDistance)
+    OrionLib:SaveSetting("AutoDodgePlayersEnabled", AutoDodgePlayersEnabled)
+    OrionLib:SaveSetting("PlayerDodgeDistance", PlayerDodgeDistance)
+    OrionLib:SaveSetting("CollectCoinsEnabled", CollectCoinsEnabled)
+end
+
+-- Apply settings at the start of each round
+local function applySettings()
+    -- Add logic to enable/disable features based on the saved settings
+end
+
 -- Create tabs for different categories
 local VisualTab = Window:MakeTab({Name = "Visual", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 local AutomatedTab = Window:MakeTab({Name = "Automated", Icon = "rbxassetid://4483345998", PremiumOnly = false})
@@ -45,67 +77,67 @@ local OtherTab = Window:MakeTab({Name = "Others", Icon = "rbxassetid://448334599
 
 -- Automated Features
 
--- Add a toggle for Auto Dodge Meteors
 AutomatedTab:AddToggle({
     Name = "Auto Dodge Meteors",
-    Default = false,
+    Default = AutoDodgeEnabled,
     Callback = function(bool)
         AutoDodgeEnabled = bool
+        saveSettings()
     end
 })
 
--- Add a slider for Dodge Distance
 AutomatedTab:AddSlider({
     Name = "Dodge Distance",
     Min = 5,
     Max = 20,
-    Default = 10,
+    Default = DodgeDistance,
     Color = Color3.fromRGB(255, 0, 0),
     Increment = 1,
     ValueName = "studs",
     Callback = function(value)
         DodgeDistance = value
+        saveSettings()
     end
 })
 
--- Add a toggle for Auto Dodge Players
 AutomatedTab:AddToggle({
     Name = "Auto Dodge Players",
-    Default = false,
+    Default = AutoDodgePlayersEnabled,
     Callback = function(bool)
         AutoDodgePlayersEnabled = bool
+        saveSettings()
     end
 })
 
--- Add a slider for Player Dodge Distance
 AutomatedTab:AddSlider({
     Name = "Player Dodge Distance",
     Min = 10,
     Max = 30,
-    Default = 15,
+    Default = PlayerDodgeDistance,
     Color = Color3.fromRGB(255, 0, 0),
     Increment = 1,
     ValueName = "studs",
     Callback = function(value)
         PlayerDodgeDistance = value
+        saveSettings()
     end
 })
 
--- Add a toggle for Collecting Coins
 AutomatedTab:AddToggle({
     Name = "Collect Coins",
-    Default = false,
+    Default = CollectCoinsEnabled,
     Callback = function(bool)
         CollectCoinsEnabled = bool
+        saveSettings()
     end
 })
 
--- Add a toggle for Auto Pass Closest Player
 AutomatedTab:AddToggle({
     Name = "Auto Pass Closest Player",
-    Default = false,
+    Default = AutoPassEnabled,
     Callback = function(bool)
         AutoPassEnabled = bool
+        saveSettings()
         if AutoPassEnabled then
             local PathfindingService = game:GetService("PathfindingService")
             local LocalPlayer = game.Players.LocalPlayer
@@ -194,37 +226,37 @@ AutomatedTab:AddToggle({
     end
 })
 
--- Add a toggle for Secure Spin
 AutomatedTab:AddToggle({
     Name = "Secure Spin",
-    Default = false,
+    Default = SecureSpinEnabled,
     Callback = function(bool)
         SecureSpinEnabled = bool
+        saveSettings()
     end
 })
 
--- Add a slider for Secure Spin Distance
 AutomatedTab:AddSlider({
     Name = "Secure Spin Distance",
     Min = 1,
     Max = 20,
-    Default = 5,
+    Default = SecureSpinDistance,
     Color = Color3.fromRGB(255, 0, 0),
     Increment = 1,
     ValueName = "studs",
     Callback = function(value)
         SecureSpinDistance = value
+        saveSettings()
     end
 })
 
 -- Other Features
 
--- Add a toggle for Anti Slippery
 OtherTab:AddToggle({
     Name = "Anti Slippery",
-    Default = false,
+    Default = AntiSlipperyEnabled,
     Callback = function(bool)
         AntiSlipperyEnabled = bool
+        saveSettings()
         if AntiSlipperyEnabled then
             spawn(function()
                 local player = game.Players.LocalPlayer
@@ -250,12 +282,12 @@ OtherTab:AddToggle({
     end
 })
 
--- Add a toggle for Remove Hitbox
 OtherTab:AddToggle({
     Name = "Remove Hitbox",
-    Default = false,
+    Default = RemoveHitboxEnabled,
     Callback = function(bool)
         RemoveHitboxEnabled = bool
+        saveSettings()
         if RemoveHitboxEnabled then
             local LocalPlayer = game.Players.LocalPlayer
             local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
@@ -431,15 +463,3 @@ game:GetService("RunService").Stepped:Connect(function()
                         break
                     end
                 end
-                wait(0.5) -- Wait for 0.5 seconds before resuming spin
-            end
-        end
-    end
-end)
-
--- Coin Collection Functionality
-game:GetService("RunService").Stepped:Connect(function()
-    if CollectCoinsEnabled then
-        collectCoins()
-    end
-end)
