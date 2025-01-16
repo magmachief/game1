@@ -6,7 +6,7 @@ ScreenGui.ResetOnSpawn = false
 
 -- Toggle button to open/close the menu
 local Toggle = Instance.new("ImageButton")
-Toggle.Name = "Toggle"
+Toggle.Name = ""
 Toggle.Parent = ScreenGui
 Toggle.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Start with red (off)
 Toggle.Position = UDim2.new(0, 120, 0, 30)
@@ -35,7 +35,7 @@ local SecureSpinEnabled = false
 local SecureSpinDistance = 5 -- Default secure spin distance
 local AutoDodgePlayersEnabled = false
 local PlayerDodgeDistance = 15 -- Default distance to dodge players
-local SafeArea = Vector3.new(100, 100, 100) -- Define a safe area boundary
+local SafeArea = {MinX = -100, MaxX = 100, MinZ = -100, MaxZ = 100} -- Define a safe area boundary
 
 -- Create tabs for different categories
 local VisualTab = Window:MakeTab({Name = "Visual", Icon = "rbxassetid://4483345998", PremiumOnly = false})
@@ -259,7 +259,7 @@ local function dodgeMeteor(meteor)
         local targetPosition = humanoidRootPart.Position + dodgeDirection
 
         -- Ensure the target position is within the safe area
-        if math.abs(targetPosition.X) <= SafeArea.X and math.abs(targetPosition.Z) <= SafeArea.Z then
+        if targetPosition.X >= SafeArea.MinX and targetPosition.X <= SafeArea.MaxX and targetPosition.Z >= SafeArea.MinZ and targetPosition.Z <= SafeArea.MaxZ then
             humanoidRootPart.Parent:FindFirstChild("Humanoid"):MoveTo(targetPosition)
         end
     end
@@ -287,7 +287,7 @@ local function dodgePlayer(player)
         local targetPosition = humanoidRootPart.Position + dodgeDirection
 
         -- Ensure the target position is within the safe area
-        if math.abs(targetPosition.X) <= SafeArea.X and math.abs(targetPosition.Z) <= SafeArea.Z then
+        if targetPosition.X >= SafeArea.MinX and targetPosition.X <= SafeArea.MaxX and targetPosition.Z >= SafeArea.MinZ and targetPosition.Z <= SafeArea.MaxZ then
             humanoidRootPart.Parent:FindFirstChild("Humanoid"):MoveTo(targetPosition)
         end
     end
