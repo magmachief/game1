@@ -19,6 +19,19 @@ local Corner = Instance.new("UICorner")
 Corner.CornerRadius = UDim.new(0.5, 0)
 Corner.Parent = Toggle
 
+-- Create a TextLabel for the timer
+local TimerLabel = Instance.new("TextLabel")
+TimerLabel.Name = "TimerLabel"
+TimerLabel.Parent = ScreenGui
+TimerLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+TimerLabel.BorderSizePixel = 0
+TimerLabel.Position = UDim2.new(0.5, -50, 0.1, 0)
+TimerLabel.Size = UDim2.new(0, 100, 0, 50)
+TimerLabel.Font = Enum.Font.SourceSansBold
+TimerLabel.TextSize = 24
+TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TimerLabel.Text = "Time: 0s"
+
 -- Load the OrionLib UI Library
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/magmachief/Library-Ui/main/Orion%20Lib%20Transparent%20%20.lua"))()
 
@@ -31,18 +44,9 @@ local RemoveHitboxEnabled = false
 local AutoPassEnabled = false
 local SecureSpinEnabled = false
 local AutoEmoteEnabled = false
-local OwnedEmotes = {}
-local SelectedEmote = ""
-
--- Function to fetch owned emotes (placeholder, replace with actual method to fetch emotes)
-local function getPlayerOwnedEmotes(player)
-    -- Placeholder for fetching emotes, replace with actual implementation
-    -- Assuming the player has these emotes for example purposes
-    return {"Dance", "Cheer", "Laugh", "Wave"}
-end
-
--- Populate the OwnedEmotes list
-OwnedEmotes = getPlayerOwnedEmotes(game.Players.LocalPlayer)
+local EmoteSlot = 1 -- Default emote slot
+local BombTimer = 30 -- Default bomb timer duration
+local SecureSpinDistance = 5 -- Default secure spin distance
 
 -- Create a tab for the main features
 local Tab = Window:MakeTab({Name = "Main", Icon = "rbxassetid://4483345998", PremiumOnly = false})
@@ -183,6 +187,20 @@ Tab:AddToggle({
     end
 })
 
+-- Add a slider for Secure Spin Distance
+Tab:AddSlider({
+    Name = "Secure Spin Distance",
+    Min = 1,
+    Max = 20,
+    Default = 5,
+    Color = Color3.fromRGB(255, 0, 0),
+    Increment = 1,
+    ValueName = "studs",
+    Callback = function(value)
+        SecureSpinDistance = value
+    end
+})
+
 -- Add a toggle for Auto Emote on Kill
 Tab:AddToggle({
     Name = "Auto Emote on Kill",
@@ -192,15 +210,48 @@ Tab:AddToggle({
     end
 })
 
--- Add a dropdown to select an emote
+-- Add a dropdown to select an emote slot
 Tab:AddDropdown({
-    Name = "Select Emote",
-    Default = "",
-    Options = OwnedEmotes,
+    Name = "Select Emote Slot",
+    Default = "1",
+    Options = {"1", "2", "3", "4", "5", "6", "7", "8", "9"},
     Callback = function(option)
-        SelectedEmote = option
+        EmoteSlot = tonumber(option)
     end
 })
+
+-- Function to start the bomb timer
+local function startBombTimer(duration)
+    local timeLeft = duration
+    TimerLabel.Text = "Time: " .. timeLeft .. "s"
+
+    while timeLeft > 0 do
+        wait(1)
+        timeLeft = timeLeft - 1
+        TimerLabel.Text = "Time: " .. timeLeft .. "s"
+        
+        if timeLeft <= 0 then
+            TimerLabel.Text = "Boom!"
+            -- Add explosion logic here if needed
+        end
+    end
+end
+
+-- Function to update the timer when the player receives the bomb
+local function onBombReceived(timeLeft)
+    BombTimer = timeLeft
+    startBombTimer(BombTimer)
+end
+
+-- Simulate receiving the bomb with a RemoteEvent
+local BombReceivedEvent = Instance.new("RemoteEvent", game.ReplicatedStorage)
+BombReceivedEvent.Name = "BombReceivedEvent"
+
+-- Connect the event to the function
+BombReceivedEvent.OnClientEvent:Connect(onBombReceived)
+
+-- Example usage: Simulate receiving the bomb with 20 seconds left
+BombReceivedEvent:FireClient(game.Players.LocalPlayer, 20)
 
 -- Create an update tab
 local UpdateTab = Window:MakeTab({Name = "Update", Icon = "rbxassetid://4483345998", PremiumOnly = false})
@@ -211,6 +262,14 @@ UpdateTab:AddLabel("- Added Auto Emote feature")
 UpdateTab:AddLabel("- Improved Secure Spin functionality")
 UpdateTab:AddLabel("- Removed bomb color picker")
 UpdateTab:AddLabel("- Removed vxghmod button")
+UpdateTab:AddLabel("Version 1.2.0:")
+UpdateTab:AddLabel("- Separated Secure Spin from Auto Pass Bomb")
+UpdateTab:AddLabel("- Added emote slot selection for Auto Emote on Kill")
+UpdateTab:AddLabel("- Increased spinning distance in Secure Spin")
+UpdateTab:AddLabel("Version 1.3.0:")
+UpdateTab:AddLabel("- Added slider for Secure Spin Distance")
+UpdateTab:AddLabel("Version 1.4.0:")
+UpdateTab:AddLabel("- Added visual timer for bomb")
 
 -- Toggle the visibility of the menu
 Toggle.MouseButton1Click:Connect(function() 
@@ -245,9 +304,9 @@ game:GetService("RunService").Stepped:Connect(function()
                 end
             end
 
-            if closestPlayer and closestDistance <= 5 then
+            if closestPlayer and closestDistance <= SecureSpinDistance then -- Use the selected spin distance
                 -- Spin when very close to the player
-                while (LocalPlayer.Character.HumanoidRootPart.Position - closestPlayer.Character.HumanoidRootPart.Position).magnitude <= 5 do
+                while (LocalPlayer.Character.HumanoidRootPart.Position - closestPlayer.Character.HumanoidRootPart.Position).magnitude <= SecureSpinDistance do -- Use the selected spin distance
                     if not SecureSpinEnabled then break end
                     LocalPlayer.Character.HumanoidRootPart.CFrame = LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(5), 0) -- Less intense spin
                     wait(0.2) -- Slower spin to seem legit
@@ -262,9 +321,10 @@ local function onPlayerAdded(player)
     player.CharacterAdded:Connect(function(character)
         local humanoid = character:WaitForChild("Humanoid")
         humanoid.Died:Connect(function()
-            if AutoEmoteEnabled and character == game.Players.LocalPlayer.Character and SelectedEmote ~= "" then
-                -- Trigger selected emote
-                game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer("/e " .. SelectedEmote, "All")
+            if AutoEmoteEnabled and character == game.Players.LocalPlayer.Character then
+                -- Trigger selected emote slot
+                local EmoteEvent = game.ReplicatedStorage:WaitForChild("PerformEmote")
+                EmoteEvent:FireServer(EmoteSlot)
             end
         end)
     end)
