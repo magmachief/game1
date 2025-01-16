@@ -6,7 +6,7 @@ ScreenGui.ResetOnSpawn = false
 
 -- Toggle button to open/close the menu
 local Toggle = Instance.new("ImageButton")
-Toggle.Name = ""
+Toggle.Name = "Toggle"
 Toggle.Parent = ScreenGui
 Toggle.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Start with red (off)
 Toggle.Position = UDim2.new(0, 120, 0, 30)
@@ -15,7 +15,7 @@ Toggle.Image = "rbxassetid://18594014746" -- Your asset ID
 Toggle.ScaleType = Enum.ScaleType.Fit
 
 -- Make the button circular
-local Corner = Instance.new("UICorner")
+local Corner = Instance.new("")
 Corner.CornerRadius = UDim.new(0.5, 0)
 Corner.Parent = Toggle
 
