@@ -47,7 +47,7 @@ end
 while true do
     trackBomb()
     if bombHolder then
-        BombInfoEvent:FireAllClients(bombHolder, bombTimer)
+        BombInfoEvent:FireAllClients(bombHolder, bombTimer) -- Send data to clients
     else
         BombInfoEvent:FireAllClients(nil, 0) -- No bomb detected
     end
