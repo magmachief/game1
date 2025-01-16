@@ -12,10 +12,6 @@ local collectCoinsEnabled = true
 local autoPassEnabled = true
 local dodgeDistance = 20
 local mapBounds = {MinX = -100, MaxX = 100, MinZ = -100, MaxZ = 100}
-local stuckCheckInterval = 1
-local stuckThreshold = 5
-local lastPosition = nil
-local stuckTime = 0
 
 -- Helper Functions
 local function isWithinBounds(position)
@@ -92,27 +88,6 @@ local function dodgePlayersWithBomb()
     end
 end
 
--- Anti-Stuck Mechanism
-local function unstickPlayer()
-    local character = LocalPlayer.Character
-    if not character then return end
-
-    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-    if not humanoidRootPart then return end
-
-    if lastPosition and humanoidRootPart.Position == lastPosition then
-        stuckTime = stuckTime + stuckCheckInterval
-        if stuckTime >= stuckThreshold then
-            humanoidRootPart.CFrame = humanoidRootPart.CFrame + Vector3.new(0, 10, 0)
-            print("Unsticking player...")
-            stuckTime = 0
-        end
-    else
-        stuckTime = 0
-    end
-    lastPosition = humanoidRootPart.Position
-end
-
 -- Auto Pass Bomb
 local function autoPassBomb()
     if not autoPassEnabled then return end
@@ -159,6 +134,5 @@ end
 RunService.Heartbeat:Connect(function()
     dodgePlayersWithBomb()
     autoPassBomb()
-    unstickPlayer()
     collectCoins()
 end)
