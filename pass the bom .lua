@@ -24,9 +24,14 @@ local Window = OrionLib:MakeWindow({Name = "Yon Menu", HidePremium = false, Intr
 local AntiSlipperyEnabled = false
 local RemoveHitboxEnabled = false
 local AutoPassEnabled = false
+local SecureSpinEnabled = false
+local AutoEmoteEnabled = false
+local OwnedEmotes = {}
+local SelectedEmote = "/e dance" -- Default emote
+
 local BombColor = Color3.new(1, 1, 1) -- Default bomb color (white)
 
-local Tab = Window:MakeTab({Name = "Main", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+local Tab = Window:MakeTab({Name = "Main", PremiumOnly = false})
 
 Tab:AddToggle({
     Name = "Anti Slippery",
@@ -131,7 +136,7 @@ Tab:AddToggle({
                             -- Spin when very close to the player
                             local function spinCharacter()
                                 while (LocalPlayer.Character.HumanoidRootPart.Position - targetPosition).magnitude <= 5 do
-                                    LocalPlayer.Character.HumanoidRootPart.CFrame = LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(10), 0)
+                                    LocalPlayer.Character.HumanoidRootPart.CFrame = LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(5), 0) -- Less intense spin
                                     wait(0.2) -- Slower spin to seem legit
                                 end
                             end
@@ -152,7 +157,40 @@ Tab:AddToggle({
     end
 })
 
-local VisualsTab = Window:MakeTab({Name = "Visuals", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+Tab:AddToggle({
+    Name = "Secure Spin",
+    Default = false,
+    Callback = function(bool)
+        SecureSpinEnabled = bool
+    end
+})
+
+Tab:AddToggle({
+    Name = "Auto Emote on Kill",
+    Default = false,
+    Callback = function(bool)
+        AutoEmoteEnabled = bool
+    end
+})
+
+Tab:AddDropdown({
+    Name = "Select Emote",
+    Default = "Dance",
+    Options = {"Dance", "Cheer", "Laugh", "Wave"},
+    Callback = function(option)
+        if option == "Dance" then
+            SelectedEmote = "/e dance"
+        elseif option == "Cheer" then
+            SelectedEmote = "/e cheer"
+        elseif option == "Laugh" then
+            SelectedEmote = "/e laugh"
+        elseif option == "Wave" then
+            SelectedEmote = "/e wave"
+        end
+    end
+})
+
+local VisualsTab = Window:MakeTab({Name = "Visuals", PremiumOnly = false})
 
 VisualsTab:AddLabel("Choose Bomb Color")
 VisualsTab:AddColorPicker({
@@ -177,7 +215,7 @@ game:GetService("RunService").Stepped:Connect(function()
     applyBombColor()
 end)
 
-local UpdateTab = Window:MakeTab({Name = "Update", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+local UpdateTab = Window:MakeTab({Name = "Update", PremiumOnly = false})
 
 UpdateTab:AddLabel("Fixing auto pass the bomb")
 
@@ -191,3 +229,53 @@ ScreenGui.Destroying:Connect(function()
 end)
 
 OrionLib:Init()
+
+-- Secure Spin Functionality
+game:GetService("RunService").Stepped:Connect(function()
+    if SecureSpinEnabled then
+        local LocalPlayer = game.Players.LocalPlayer
+        local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+
+        if Character:FindFirstChild("Bomb") then
+            local closestPlayer = nil
+            local closestDistance = math.huge
+
+            for _, Player in next, game.Players:GetPlayers() do
+                if Player ~= LocalPlayer and Player.Character and Player.Character.Parent == workspace then
+                    local distance = (LocalPlayer.Character.HumanoidRootPart.Position - Player.Character.HumanoidRootPart.Position).magnitude
+                    if distance < closestDistance then
+                        closestDistance = distance
+                        closestPlayer = Player
+                    end
+                end
+            end
+
+            if closestPlayer and closestDistance <= 5 then
+                -- Spin when very close to the player
+                while (LocalPlayer.Character.HumanoidRootPart.Position - closestPlayer.Character.HumanoidRootPart.Position).magnitude <= 5 do
+                    if not SecureSpinEnabled then break end
+                    LocalPlayer.Character.HumanoidRootPart.CFrame = LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(5), 0) -- Less intense spin
+                    wait(0.2) -- Slower spin to seem legit
+                end
+            end
+        end
+    end
+end)
+
+-- Auto Emote on Kill Functionality
+local function onPlayerAdded(player)
+    player.CharacterAdded:Connect(function(character)
+        local humanoid = character:WaitForChild("Humanoid")
+        humanoid.Died:Connect(function()
+            if AutoEmoteEnabled and player == game.Players.LocalPlayer then
+                -- Trigger selected emote
+                game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(SelectedEmote, "All")
+            end
+        end)
+    end)
+end
+
+game.Players.PlayerAdded:Connect(onPlayerAdded)
+for _, player in ipairs(game.Players:GetPlayers()) do
+    onPlayerAdded(player)
+end
