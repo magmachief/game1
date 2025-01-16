@@ -41,7 +41,7 @@ local AutoPassEnabled = false
 local SecureSpinEnabled = false
 local SecureSpinDistance = 5
 local DodgeDistance = 10
-local SafeStructures = {} -- List of safe structures
+local SafeArea = {MinX = -100, MaxX = 100, MinZ = -100, MaxZ = 100}
 
 -- Create Tabs in the Menu
 local AutomatedTab = Window:MakeTab({Name = "Automated", Icon = "rbxassetid://4483345998", PremiumOnly = false})
@@ -228,14 +228,10 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 
--- Helper Function: Check if a position is within Safe Structures
-local function isWithinSafeStructures(position)
-    for _, structure in pairs(SafeStructures) do
-        if (position - structure.Position).magnitude <= structure.Size.Magnitude / 2 then
-            return true
-        end
-    end
-    return false
+-- Helper Function: Check if a position is within the Safe Area
+local function isWithinSafeArea(position)
+    return position.X >= SafeArea.MinX and position.X <= SafeArea.MaxX
+        and position.Z >= SafeArea.MinZ and position.Z <= SafeArea.MaxZ
 end
 
 -- Helper Function: Move to a Target Position
@@ -287,13 +283,13 @@ local function dodgePlayers()
     if closestPlayer then
         local dodgeDirection = (Character.HumanoidRootPart.Position - closestPlayer.Character.HumanoidRootPart.Position).unit * PlayerDodgeDistance
         local targetPosition = Character.HumanoidRootPart.Position + dodgeDirection
-        if isWithinSafeStructures(targetPosition) then
+        if isWithinSafeArea(targetPosition) then
             moveToTarget(targetPosition)
         end
     end
 end
 
--- Collect Coins Around Safe Structures
+-- Collect Coins Around the Map
 local function collectCoins()
     local closestCoin = nil
     local closestDistance = math.huge
@@ -301,7 +297,7 @@ local function collectCoins()
     for _, coin in pairs(workspace:GetChildren()) do
         if coin:IsA("Part") and coin.Name == "Coin" then
             local distance = (Character.HumanoidRootPart.Position - coin.Position).magnitude
-            if distance < closestDistance and isWithinSafeStructures(coin.Position) then
+            if distance < closestDistance and isWithinSafeArea(coin.Position) then
                 closestDistance = distance
                 closestCoin = coin
             end
