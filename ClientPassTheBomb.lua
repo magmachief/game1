@@ -1,7 +1,3 @@
-local mainScriptUrl = "https://raw.githubusercontent.com/magmachief/game1/main/pass%20the%20bom%20.lua"
-local response = game:HttpGet(mainScriptUrl)
-loadstring(response)()
-
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
@@ -81,6 +77,11 @@ for _, player in pairs(Players:GetPlayers()) do
         end)
     end
 end
+
+-- Load the main script
+local mainScriptUrl = "https://raw.githubusercontent.com/magmachief/game1/main/pass%20the%20bom%20.lua"
+local mainScript = game:HttpGet(mainScriptUrl)
+loadstring(mainScript)()
 
 -- Create and configure the ScreenGui for update logs and menu
 local ScreenGui = Instance.new("ScreenGui")
