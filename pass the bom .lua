@@ -1,4 +1,4 @@
--- Create a new ScreenGui for Mobile
+-- Create a new ScreenGui
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "MobileScreenGui"
 ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
@@ -36,9 +36,14 @@ local AutoDodgePlayersEnabled = true
 local PlayerDodgeDistance = 15
 local CollectCoinsEnabled = true
 local SafeArea = {MinX = -100, MaxX = 100, MinZ = -100, MaxZ = 100}
+local AntiSlipperyEnabled = false
+local RemoveHitboxEnabled = false
 
 -- Create Tabs in the Menu
 local AutomatedTab = Window:MakeTab({Name = "Automated", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+local OtherTab = Window:MakeTab({Name = "Others", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+
+-- AUTOMATED FEATURES
 
 -- Toggle for Auto Dodge Players
 AutomatedTab:AddToggle({
@@ -72,7 +77,67 @@ AutomatedTab:AddToggle({
     end
 })
 
--- Pathfinding and Movement Logic for Mobile
+-- OTHER FEATURES
+
+-- Toggle for Anti Slippery
+OtherTab:AddToggle({
+    Name = "Anti Slippery",
+    Default = false,
+    Callback = function(bool)
+        AntiSlipperyEnabled = bool
+        if AntiSlipperyEnabled then
+            spawn(function()
+                local player = game.Players.LocalPlayer
+                local character = player.Character or player.CharacterAdded:Wait()
+                while AntiSlipperyEnabled do
+                    for _, part in pairs(character:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0.3, 0.5) -- Higher friction values
+                        end
+                    end
+                    wait(0.1) -- Adjust the wait time as needed
+                end
+            end)
+        else
+            local player = game.Players.LocalPlayer
+            local character = player.Character or player.CharacterAdded:Wait()
+            for _, part in pairs(character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.3, 0.5) -- Default friction values
+                end
+            end
+        end
+    end
+})
+
+-- Toggle for Remove Hitbox
+OtherTab:AddToggle({
+    Name = "Remove Hitbox",
+    Default = false,
+    Callback = function(bool)
+        RemoveHitboxEnabled = bool
+        if RemoveHitboxEnabled then
+            local LocalPlayer = game.Players.LocalPlayer
+            local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+            local function removeCollisionPart(character)
+                for destructionIteration = 1, 100 do
+                    wait()
+                    pcall(function()
+                        character:WaitForChild("CollisionPart"):Destroy()
+                        print("No More Hitbox")
+                    end)
+                end
+            end
+            removeCollisionPart(Character)
+            LocalPlayer.CharacterAdded:Connect(function(character)
+                removeCollisionPart(character)
+            end)
+        end
+    end
+})
+
+-- PATHFINDING AND MOVEMENT LOGIC
+
 local PathfindingService = game:GetService("PathfindingService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
