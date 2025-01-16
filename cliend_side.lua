@@ -6,38 +6,31 @@ end)
 if not success then
     warn("Failed to load bomb script: " .. tostring(result))
 end
-
--- Client-Side Script
+-- Services
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
 
--- Get the RemoteEvent
-local BombTimerEvent = ReplicatedStorage:WaitForChild("BombTimerEvent")
+-- UI Setup
+local PlayerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+local ScreenGui = Instance.new("ScreenGui", PlayerGui)
+ScreenGui.Name = "BombTrackerGui"
 
--- Create a UI to display the bomb timer
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "BombTimerGui"
-ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+local InfoLabel = Instance.new("TextLabel", ScreenGui)
+InfoLabel.Size = UDim2.new(0.4, 0, 0.1, 0)
+InfoLabel.Position = UDim2.new(0.3, 0, 0.05, 0)
+InfoLabel.BackgroundTransparency = 0.5
+InfoLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+InfoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+InfoLabel.Font = Enum.Font.SourceSansBold
+InfoLabel.TextScaled = true
+InfoLabel.Text = "No Bomb Detected"
 
-local TimerLabel = Instance.new("TextLabel")
-TimerLabel.Name = "TimerLabel"
-TimerLabel.Parent = ScreenGui
-TimerLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-TimerLabel.BackgroundTransparency = 0.5
-TimerLabel.Position = UDim2.new(0.5, -50, 0, 50)
-TimerLabel.Size = UDim2.new(0, 100, 0, 50)
-TimerLabel.Font = Enum.Font.SourceSans
-TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-TimerLabel.TextSize = 24
-TimerLabel.Text = "Time: 0s"
-
--- Function to update the timer label
-local function updateTimerLabel(timeLeft)
-    TimerLabel.Text = "Time: " .. tostring(timeLeft) .. "s"
-end
-
--- Listen for the bomb timer event
-BombTimerEvent.OnClientEvent:Connect(function(timeLeft)
-    updateTimerLabel(timeLeft)
+-- Listen for Bomb Info Updates
+local BombInfoEvent = ReplicatedStorage:WaitForChild("BombInfoEvent")
+BombInfoEvent.OnClientEvent:Connect(function(bombHolder, timerValue)
+    if bombHolder then
+        InfoLabel.Text = bombHolder.Name .. " has the bomb: " .. timerValue .. "s"
+    else
+        InfoLabel.Text = "No Bomb Detected"
+    end
 end)
