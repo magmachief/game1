@@ -1,21 +1,21 @@
-local ScreenGui = Instance.new("ScreenGui") 
-ScreenGui.Name = "ScreenGui" 
-ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui") 
-ScreenGui.ResetOnSpawn = false 
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ScreenGui"
+ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.ResetOnSpawn = false
 
 -- Toggle button to open/close the menu
-local Toggle = Instance.new("ImageButton") 
-Toggle.Name = "Toggle" 
-Toggle.Parent = ScreenGui 
-Toggle.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Start with red (off) 
-Toggle.Position = UDim2.new(0, 120, 0, 30) 
-Toggle.Size = UDim2.new(0, 50, 0, 50) -- Smaller size for a compact circular button 
-Toggle.Image = "rbxassetid://18594014746" -- Your asset ID 
-Toggle.ScaleType = Enum.ScaleType.Fit 
+local Toggle = Instance.new("ImageButton")
+Toggle.Name = "Toggle"
+Toggle.Parent = ScreenGui
+Toggle.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Start with red (off)
+Toggle.Position = UDim2.new(0, 120, 0, 30)
+Toggle.Size = UDim2.new(0, 50, 0, 50) -- Smaller size for a compact circular button
+Toggle.Image = "rbxassetid://18594014746" -- Your asset ID
+Toggle.ScaleType = Enum.ScaleType.Fit
 
-local Corner = Instance.new("UICorner") 
-Corner.CornerRadius = UDim.new(0.5, 0) -- Make the button circular 
-Corner.Parent = Toggle 
+local Corner = Instance.new("UICorner")
+Corner.CornerRadius = UDim.new(0.5, 0) -- Make the button circular
+Corner.Parent = Toggle
 
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/magmachief/Library-Ui/main/Orion%20Lib%20Transparent%20%20.lua"))()
 
@@ -24,6 +24,7 @@ local Window = OrionLib:MakeWindow({Name = "Yon Menu", HidePremium = false, Intr
 local AntiSlipperyEnabled = false
 local RemoveHitboxEnabled = false
 local AutoPassEnabled = false
+local BombColor = Color3.new(1, 1, 1) -- Default bomb color (white)
 
 local Tab = Window:MakeTab({Name = "Main", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 
@@ -121,11 +122,10 @@ Tab:AddToggle({
                             
                             -- Move towards the closest player
                             local targetPosition = closestPlayer.Character.HumanoidRootPart.Position
-                            local function moveToTarget()
-                                while (LocalPlayer.Character.HumanoidRootPart.Position - targetPosition).magnitude > 5 do
-                                    LocalPlayer.Character:MoveTo(targetPosition)
-                                    wait(0.1)
-                                end
+                            local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+                            
+                            if humanoid then
+                                humanoid:MoveTo(targetPosition)
                             end
 
                             -- Spin when very close to the player
@@ -136,8 +136,7 @@ Tab:AddToggle({
                                 end
                             end
 
-                            -- Move to the target and then spin
-                            moveToTarget()
+                            -- Check if within range to pass the bomb
                             if (LocalPlayer.Character.HumanoidRootPart.Position - targetPosition).magnitude <= 5 then
                                 spinCharacter()
                                 -- Fire the bomb event
@@ -152,6 +151,31 @@ Tab:AddToggle({
         end
     end
 })
+
+local VisualsTab = Window:MakeTab({Name = "Visuals", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+
+VisualsTab:AddLabel("Choose Bomb Color")
+VisualsTab:AddColorPicker({
+    Name = "Bomb Color",
+    Default = Color3.new(1, 1, 1), -- Default to white
+    Callback = function(color)
+        BombColor = color
+    end
+})
+
+-- Function to apply the selected bomb color
+local function applyBombColor()
+    local LocalPlayer = game.Players.LocalPlayer
+    local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    if Character:FindFirstChild("Bomb") then
+        Character.Bomb.BrickColor = BrickColor.new(BombColor)
+    end
+end
+
+-- Apply bomb color before the round starts
+game:GetService("RunService").Stepped:Connect(function()
+    applyBombColor()
+end)
 
 local UpdateTab = Window:MakeTab({Name = "Update", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 
