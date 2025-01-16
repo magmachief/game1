@@ -29,8 +29,6 @@ local AutoEmoteEnabled = false
 local OwnedEmotes = {}
 local SelectedEmote = "/e dance" -- Default emote
 
-local BombColor = Color3.new(1, 1, 1) -- Default bomb color (white)
-
 local Tab = Window:MakeTab({Name = "Main", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 
 Tab:AddToggle({
@@ -190,41 +188,13 @@ Tab:AddDropdown({
     end
 })
 
-local VisualsTab = Window:MakeTab({Name = "Visuals", Icon = "rbxassetid://4483345998", PremiumOnly = false})
-
-VisualsTab:AddLabel("Choose Bomb Color")
-VisualsTab:AddColorPicker({
-    Name = "Bomb Color",
-    Default = Color3.new(1, 1, 1), -- Default to white
-    Callback = function(color)
-        BombColor = color
-    end
-})
-
--- Function to apply the selected bomb color
-local function applyBombColor()
-    local LocalPlayer = game.Players.LocalPlayer
-    local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    if Character:FindFirstChild("Bomb") then
-        Character.Bomb.BrickColor = BrickColor.new(BombColor)
-    end
-end
-
--- Apply bomb color before the round starts
-game:GetService("RunService").Stepped:Connect(function()
-    applyBombColor()
-end)
-
 local UpdateTab = Window:MakeTab({Name = "Update", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 
-UpdateTab:AddLabel("Fixing auto pass the bomb")
-
--- Update logs
 UpdateTab:AddLabel("Update Logs")
 UpdateTab:AddLabel("Version 1.1.0:")
 UpdateTab:AddLabel("- Added Auto Emote feature")
 UpdateTab:AddLabel("- Improved Secure Spin functionality")
-UpdateTab:AddLabel("- Added color picker for bomb color")
+UpdateTab:AddLabel("- Removed bomb color picker")
 UpdateTab:AddLabel("- Removed vxghmod button")
 
 Toggle.MouseButton1Click:Connect(function() 
