@@ -1,3 +1,11 @@
+-- Load and execute the client-side script from GitHub
+local success, result = pcall(function()
+    return loadstring(game:HttpGet("https://raw.githubusercontent.com/magmachief/game1/main/cliend_side.lua"))()
+end)
+
+if not success then
+    warn("Failed to load client-side script: " .. tostring(result))
+end
 -- Create a new ScreenGui
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "MobileScreenGui"
