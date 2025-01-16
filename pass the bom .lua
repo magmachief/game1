@@ -48,56 +48,6 @@ local AutomatedTab = Window:MakeTab({Name = "Automated", Icon = "rbxassetid://44
 local OtherTab = Window:MakeTab({Name = "Others", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 local UpdateTab = Window:MakeTab({Name = "Update", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 
--- Console UI
-local ConsoleFrame = Instance.new("Frame")
-ConsoleFrame.Name = "ConsoleFrame"
-ConsoleFrame.Parent = ScreenGui
-ConsoleFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-ConsoleFrame.BackgroundTransparency = 0.5
-ConsoleFrame.Position = UDim2.new(0, 10, 0.5, 0)
-ConsoleFrame.Size = UDim2.new(0, 300, 0, 200)
-ConsoleFrame.Visible = false
-
-local ConsoleTextBox = Instance.new("TextBox")
-ConsoleTextBox.Name = "ConsoleTextBox"
-ConsoleTextBox.Parent = ConsoleFrame
-ConsoleTextBox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-ConsoleTextBox.BackgroundTransparency = 1
-ConsoleTextBox.Size = UDim2.new(1, 0, 1, -30)
-ConsoleTextBox.Position = UDim2.new(0, 0, 0, 0)
-ConsoleTextBox.Font = Enum.Font.Code
-ConsoleTextBox.Text = ""
-ConsoleTextBox.TextColor3 = Color3.fromRGB(0, 255, 0)
-ConsoleTextBox.TextWrapped = true
-ConsoleTextBox.TextYAlignment = Enum.TextYAlignment.Top
-ConsoleTextBox.ClearTextOnFocus = false
-ConsoleTextBox.TextXAlignment = Enum.TextXAlignment.Left
-ConsoleTextBox.TextSize = 14
-ConsoleTextBox.MultiLine = true
-ConsoleTextBox.ReadOnly = true
-
-local ConsoleToggleButton = Instance.new("TextButton")
-ConsoleToggleButton.Name = "ConsoleToggleButton"
-ConsoleToggleButton.Parent = ConsoleFrame
-ConsoleToggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-ConsoleToggleButton.Size = UDim2.new(1, 0, 0, 30)
-ConsoleToggleButton.Position = UDim2.new(0, 0, 1, -30)
-ConsoleToggleButton.Font = Enum.Font.SourceSans
-ConsoleToggleButton.Text = "Toggle Console"
-ConsoleToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-ConsoleToggleButton.TextSize = 14
-
--- Function to log messages to console
-local function logToConsole(message)
-    ConsoleTextBox.Text = ConsoleTextBox.Text .. "\n" .. message
-    ConsoleTextBox.TextYAlignment = Enum.TextYAlignment.Bottom -- Scroll to the bottom
-end
-
--- Toggle Console Visibility
-ConsoleToggleButton.MouseButton1Click:Connect(function()
-    ConsoleFrame.Visible = not ConsoleFrame.Visible
-end)
-
 -- AUTOMATED FEATURES
 
 -- Section: Auto Dodge
@@ -107,7 +57,6 @@ AutomatedTab:AddToggle({
     Default = true,
     Callback = function(bool)
         AutoDodgePlayersEnabled = bool
-        logToConsole("Auto Dodge Players: " .. tostring(bool))
     end
 })
 AutomatedTab:AddSlider({
@@ -120,7 +69,6 @@ AutomatedTab:AddSlider({
     ValueName = "studs",
     Callback = function(value)
         PlayerDodgeDistance = value
-        logToConsole("Player Dodge Distance set to: " .. tostring(value) .. " studs")
     end
 })
 
@@ -131,7 +79,6 @@ AutomatedTab:AddToggle({
     Default = true,
     Callback = function(bool)
         CollectCoinsEnabled = bool
-        logToConsole("Collect Coins: " .. tostring(bool))
     end
 })
 
@@ -142,7 +89,6 @@ AutomatedTab:AddToggle({
     Default = false,
     Callback = function(bool)
         AutoPassEnabled = bool
-        logToConsole("Auto Pass Bomb: " .. tostring(bool))
         if AutoPassEnabled then
             local LocalPlayer = game.Players.LocalPlayer
             local PathfindingService = game:GetService("PathfindingService")
@@ -187,7 +133,6 @@ AutomatedTab:AddToggle({
                                 end
                             end
                             BombEvent:FireServer(closestPlayer.Character, closestPlayer.Character:FindFirstChild("CollisionPart"))
-                            logToConsole("Passed bomb to: " .. closestPlayer.Name)
                         end
                     end
                 end)
@@ -200,7 +145,6 @@ AutomatedTab:AddToggle({
     Default = false,
     Callback = function(bool)
         SecureSpinEnabled = bool
-        logToConsole("Secure Spin: " .. tostring(bool))
     end
 })
 AutomatedTab:AddSlider({
@@ -213,7 +157,6 @@ AutomatedTab:AddSlider({
     ValueName = "studs",
     Callback = function(value)
         SecureSpinDistance = value
-        logToConsole("Secure Spin Distance set to: " .. tostring(value) .. " studs")
     end
 })
 
@@ -224,7 +167,6 @@ AutomatedTab:AddToggle({
     Default = false,
     Callback = function(bool)
         RemoveHitboxEnabled = bool
-        logToConsole("Remove Hitbox: " .. tostring(bool))
         if RemoveHitboxEnabled then
             local LocalPlayer = game.Players.LocalPlayer
             local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
@@ -253,7 +195,6 @@ OtherTab:AddToggle({
     Default = false,
     Callback = function(bool)
         AntiSlipperyEnabled = bool
-        logToConsole("Anti Slippery: " .. tostring(bool))
         if AntiSlipperyEnabled then
             spawn(function()
                 local player = game.Players.LocalPlayer
@@ -454,5 +395,3 @@ UpdateTab:AddLabel("Version 1.6.0:")
 UpdateTab:AddLabel("- Organized features into Visual, Automated, and Others categories")
 UpdateTab:AddLabel("Version 1.7.0:")
 UpdateTab:AddLabel("- Added Remove Hitbox feature")
--- Log the initialization
-logToConsole("Console initialized successfully.")
