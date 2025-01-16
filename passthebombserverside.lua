@@ -11,16 +11,16 @@ local function createTimerGui(player)
     billboardGui.Parent = head
     billboardGui.Adornee = head
     billboardGui.Size = UDim2.new(0, 200, 0, 50)
-    billboardGui.StudsOffset = Vector3.new(0, 2, 0)
+    billboardGui.StudsOffset = Vector3.new(0, 2.5, 0) -- Adjusted to be above the player's name
     billboardGui.AlwaysOnTop = true
 
     local timerLabel = Instance.new("TextLabel")
     timerLabel.Name = "TimerLabel"
     timerLabel.Size = UDim2.new(1, 0, 1, 0)
     timerLabel.BackgroundTransparency = 1
-    timerLabel.TextColor3 = Color3.new(1, 1, 1)
+    timerLabel.TextColor3 = Color3.new(1, 0, 0) -- Changed to red
     timerLabel.Font = Enum.Font.SourceSans
-    timerLabel.TextSize = 24
+    timerLabel.TextSize = 14 -- Adjusted text size
     timerLabel.Text = "Time Remaining: 0"
     timerLabel.Parent = billboardGui
 
