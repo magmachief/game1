@@ -13,34 +13,25 @@ local bomb = nil
 local bombHolder = nil
 local bombTimer = 0
 
--- Function to check for the bomb in the workspace
+-- Function to find the bomb in the workspace or on a player
 local function findBomb()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Character and player.Character:FindFirstChild("Bomb") then
+            return player.Character:FindFirstChild("Bomb"), player
+        end
+    end
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj:IsA("Part") and obj.Name == "Bomb" then
-            return obj
+            return obj, nil
         end
     end
-    return nil
-end
-
--- Function to determine the bomb holder
-local function getBombHolder(bombPart)
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            local distance = (player.Character.HumanoidRootPart.Position - bombPart.Position).Magnitude
-            if distance < 5 then -- Bomb is within 5 studs of the player
-                return player
-            end
-        end
-    end
-    return nil
+    return nil, nil
 end
 
 -- Function to track bomb and update timer
 local function trackBomb()
-    bomb = findBomb()
+    bomb, bombHolder = findBomb()
     if bomb then
-        bombHolder = getBombHolder(bomb)
         if bomb:FindFirstChild("Timer") then
             bombTimer = bomb.Timer.Value -- Use the game's timer if it exists
         else
