@@ -6,6 +6,7 @@ end)
 if not success then
     warn("Failed to load bomb script: " .. tostring(result))
 end
+
 -- Services
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -29,7 +30,11 @@ InfoLabel.Text = "No Bomb Detected"
 local BombInfoEvent = ReplicatedStorage:WaitForChild("BombInfoEvent")
 BombInfoEvent.OnClientEvent:Connect(function(bombHolder, timerValue)
     if bombHolder then
-        InfoLabel.Text = bombHolder.Name .. " has the bomb: " .. timerValue .. "s"
+        if bombHolder == Players.LocalPlayer then
+            InfoLabel.Text = "You have the bomb! Time left: " .. timerValue .. "s"
+        else
+            InfoLabel.Text = bombHolder.Name .. " has the bomb: " .. timerValue .. "s"
+        end
     else
         InfoLabel.Text = "No Bomb Detected"
     end
