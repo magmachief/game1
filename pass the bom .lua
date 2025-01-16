@@ -8,10 +8,10 @@ ScreenGui.ResetOnSpawn = false
 local Toggle = Instance.new("ImageButton")
 Toggle.Name = "Toggle"
 Toggle.Parent = ScreenGui
-Toggle.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Start with red (off)
-Toggle.Position = UDim2.new(0, 50, 0, 50) -- Adjust for mobile screen
-Toggle.Size = UDim2.new(0, 60, 0, 60) -- Larger for touch input
-Toggle.Image = "rbxassetid://18594014746" -- Your asset ID
+Toggle.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+Toggle.Position = UDim2.new(0, 50, 0, 50)
+Toggle.Size = UDim2.new(0, 60, 0, 60)
+Toggle.Image = "rbxassetid://18594014746"
 Toggle.ScaleType = Enum.ScaleType.Fit
 
 -- Make the button circular
@@ -35,9 +35,13 @@ local Window = OrionLib:MakeWindow({
 local AutoDodgePlayersEnabled = true
 local PlayerDodgeDistance = 15
 local CollectCoinsEnabled = true
-local SafeArea = {MinX = -100, MaxX = 100, MinZ = -100, MaxZ = 100}
 local AntiSlipperyEnabled = false
 local RemoveHitboxEnabled = false
+local AutoPassEnabled = false
+local SecureSpinEnabled = false
+local SecureSpinDistance = 5
+local DodgeDistance = 10
+local SafeArea = {MinX = -100, MaxX = 100, MinZ = -100, MaxZ = 100}
 
 -- Create Tabs in the Menu
 local AutomatedTab = Window:MakeTab({Name = "Automated", Icon = "rbxassetid://4483345998", PremiumOnly = false})
@@ -68,12 +72,93 @@ AutomatedTab:AddSlider({
     end
 })
 
--- Toggle for Auto Collect Coins
+-- Toggle for Collect Coins
 AutomatedTab:AddToggle({
     Name = "Collect Coins",
     Default = true,
     Callback = function(bool)
         CollectCoinsEnabled = bool
+    end
+})
+
+-- Add a toggle for Auto Pass Bomb
+AutomatedTab:AddToggle({
+    Name = "Auto Pass Bomb",
+    Default = false,
+    Callback = function(bool)
+        AutoPassEnabled = bool
+        if AutoPassEnabled then
+            local LocalPlayer = game.Players.LocalPlayer
+            local PathfindingService = game:GetService("PathfindingService")
+            game:GetService("RunService").Stepped:Connect(function()
+                if not AutoPassEnabled then return end
+                pcall(function()
+                    if LocalPlayer.Backpack:FindFirstChild("Bomb") then
+                        LocalPlayer.Backpack:FindFirstChild("Bomb").Parent = LocalPlayer.Character
+                    end
+
+                    local Bomb = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Bomb")
+                    if Bomb then
+                        local BombEvent = Bomb:FindFirstChild("RemoteEvent")
+                        local closestPlayer = nil
+                        local closestDistance = math.huge
+
+                        for _, player in pairs(game.Players:GetPlayers()) do
+                            if player ~= LocalPlayer and player.Character and not player.Character:FindFirstChild("Bomb") then
+                                local distance = (LocalPlayer.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).magnitude
+                                if distance < closestDistance then
+                                    closestDistance = distance
+                                    closestPlayer = player
+                                end
+                            end
+                        end
+
+                        if closestPlayer and closestPlayer.Character then
+                            local targetPosition = closestPlayer.Character.HumanoidRootPart.Position
+                            local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+                            if humanoid then
+                                local path = PathfindingService:CreatePath({
+                                    AgentRadius = 2,
+                                    AgentHeight = 5,
+                                    AgentCanJump = true,
+                                    AgentJumpHeight = 10,
+                                    AgentMaxSlope = 45,
+                                })
+                                path:ComputeAsync(LocalPlayer.Character.HumanoidRootPart.Position, targetPosition)
+                                for _, waypoint in ipairs(path:GetWaypoints()) do
+                                    humanoid:MoveTo(waypoint.Position)
+                                    humanoid.MoveToFinished:Wait()
+                                end
+                            end
+                            BombEvent:FireServer(closestPlayer.Character, closestPlayer.Character:FindFirstChild("CollisionPart"))
+                        end
+                    end
+                end)
+            end)
+        end
+    end
+})
+
+-- Add a toggle for Secure Spin
+AutomatedTab:AddToggle({
+    Name = "Secure Spin",
+    Default = false,
+    Callback = function(bool)
+        SecureSpinEnabled = bool
+    end
+})
+
+-- Slider for Secure Spin Distance
+AutomatedTab:AddSlider({
+    Name = "Secure Spin Distance",
+    Min = 1,
+    Max = 20,
+    Default = 5,
+    Color = Color3.fromRGB(255, 0, 0),
+    Increment = 1,
+    ValueName = "studs",
+    Callback = function(value)
+        SecureSpinDistance = value
     end
 })
 
@@ -92,10 +177,10 @@ OtherTab:AddToggle({
                 while AntiSlipperyEnabled do
                     for _, part in pairs(character:GetDescendants()) do
                         if part:IsA("BasePart") then
-                            part.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0.3, 0.5) -- Higher friction values
+                            part.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0.3, 0.5)
                         end
                     end
-                    wait(0.1) -- Adjust the wait time as needed
+                    wait(0.1)
                 end
             end)
         else
@@ -103,7 +188,7 @@ OtherTab:AddToggle({
             local character = player.Character or player.CharacterAdded:Wait()
             for _, part in pairs(character:GetDescendants()) do
                 if part:IsA("BasePart") then
-                    part.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.3, 0.5) -- Default friction values
+                    part.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.3, 0.5)
                 end
             end
         end
@@ -124,7 +209,6 @@ OtherTab:AddToggle({
                     wait()
                     pcall(function()
                         character:WaitForChild("CollisionPart"):Destroy()
-                        print("No More Hitbox")
                     end)
                 end
             end
@@ -225,7 +309,8 @@ local function collectCoins()
     end
 end
 
--- Main Update Loop
+-- MAIN UPDATE LOOP
+
 RunService.Stepped:Connect(function()
     if Character and Character:FindFirstChild("HumanoidRootPart") then
         if AutoDodgePlayersEnabled then
@@ -238,14 +323,10 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- Toggle Visibility of the Menu
+-- TOGGLE MENU VISIBILITY
+
 Toggle.MouseButton1Click:Connect(function()
     ScreenGui.Enabled = not ScreenGui.Enabled
-end)
-
--- Destroy Script on UI Destruction
-ScreenGui.Destroying:Connect(function()
-    script:Destroy()
 end)
 
 -- Initialize OrionLib UI
