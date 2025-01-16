@@ -7,9 +7,9 @@ local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
 -- Variables
-local autoDodgeEnabled = true
-local collectCoinsEnabled = true
-local autoPassEnabled = true
+local autoDodgeEnabled = false
+local collectCoinsEnabled = false
+local autoPassEnabled = false
 local dodgeDistance = 20
 local mapBounds = {MinX = -100, MaxX = 100, MinZ = -100, MaxZ = 100}
 
