@@ -6,7 +6,6 @@ end)
 if not success then
     warn("Failed to load bomb script: " .. tostring(result))
 end
-
 -- Services
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -17,13 +16,14 @@ local ScreenGui = Instance.new("ScreenGui", PlayerGui)
 ScreenGui.Name = "BombTrackerGui"
 
 local InfoLabel = Instance.new("TextLabel", ScreenGui)
-InfoLabel.Size = UDim2.new(0.4, 0, 0.1, 0)
-InfoLabel.Position = UDim2.new(0.3, 0, 0.05, 0)
-InfoLabel.BackgroundTransparency = 0.5
+InfoLabel.Size = UDim2.new(0.5, 0, 0.1, 0)
+InfoLabel.Position = UDim2.new(0.25, 0, 0.05, 0)
+InfoLabel.BackgroundTransparency = 0.3
 InfoLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 InfoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 InfoLabel.Font = Enum.Font.SourceSansBold
 InfoLabel.TextScaled = true
+InfoLabel.Visible = true
 InfoLabel.Text = "No Bomb Detected"
 
 -- Listen for Bomb Info Updates
