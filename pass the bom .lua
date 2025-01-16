@@ -19,19 +19,6 @@ local Corner = Instance.new("UICorner")
 Corner.CornerRadius = UDim.new(0.5, 0)
 Corner.Parent = Toggle
 
--- Create a TextLabel for the timer
-local TimerLabel = Instance.new("TextLabel")
-TimerLabel.Name = "TimerLabel"
-TimerLabel.Parent = ScreenGui
-TimerLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-TimerLabel.BorderSizePixel = 0
-TimerLabel.Position = UDim2.new(0.5, -50, 0.1, 0)
-TimerLabel.Size = UDim2.new(0, 100, 0, 50)
-TimerLabel.Font = Enum.Font.SourceSansBold
-TimerLabel.TextSize = 24
-TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-TimerLabel.Text = "Time: 0s"
-
 -- Load the OrionLib UI Library
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/magmachief/Library-Ui/main/Orion%20Lib%20Transparent%20%20.lua"))()
 
@@ -39,77 +26,71 @@ local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/magm
 local Window = OrionLib:MakeWindow({Name = "Yon Menu", HidePremium = false, IntroText = "Yon Menu", SaveConfig = true, ConfigFolder = "YonMenu"})
 
 -- Define variables for toggles
+local AutoDodgeEnabled = false
+local DodgeDistance = 10 -- Default distance to dodge
 local AntiSlipperyEnabled = false
 local RemoveHitboxEnabled = false
 local AutoPassEnabled = false
 local SecureSpinEnabled = false
-local AutoEmoteEnabled = false
-local EmoteSlot = 1 -- Default emote slot
-local BombTimer = 30 -- Default bomb timer duration
 local SecureSpinDistance = 5 -- Default secure spin distance
+local AutoDodgePlayersEnabled = false
+local PlayerDodgeDistance = 15 -- Default distance to dodge players
 
--- Create a tab for the main features
-local Tab = Window:MakeTab({Name = "Main", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+-- Create tabs for different categories
+local VisualTab = Window:MakeTab({Name = "Visual", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+local AutomatedTab = Window:MakeTab({Name = "Automated", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+local OtherTab = Window:MakeTab({Name = "Others", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 
--- Add a toggle for Anti Slippery
-Tab:AddToggle({
-    Name = "Anti Slippery",
+-- Automated Features
+
+-- Add a toggle for Auto Dodge Meteors
+AutomatedTab:AddToggle({
+    Name = "Auto Dodge Meteors",
     Default = false,
     Callback = function(bool)
-        AntiSlipperyEnabled = bool
-        if AntiSlipperyEnabled then
-            spawn(function()
-                local player = game.Players.LocalPlayer
-                local character = player.Character or player.CharacterAdded:Wait()
-                while AntiSlipperyEnabled do
-                    for _, part in pairs(character:GetDescendants()) do
-                        if part:IsA("BasePart") then
-                            part.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0.3, 0.5) -- Higher friction values
-                        end
-                    end
-                    wait(0.1) -- Adjust the wait time as needed
-                end
-            end)
-        else
-            local player = game.Players.LocalPlayer
-            local character = player.Character or player.CharacterAdded:Wait()
-            for _, part in pairs(character:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.3, 0.5) -- Default friction values
-                end
-            end
-        end
+        AutoDodgeEnabled = bool
     end
 })
 
--- Add a toggle for Remove Hitbox
-Tab:AddToggle({
-    Name = "Remove Hitbox",
+-- Add a slider for Dodge Distance
+AutomatedTab:AddSlider({
+    Name = "Dodge Distance",
+    Min = 5,
+    Max = 20,
+    Default = 10,
+    Color = Color3.fromRGB(255, 0, 0),
+    Increment = 1,
+    ValueName = "studs",
+    Callback = function(value)
+        DodgeDistance = value
+    end
+})
+
+-- Add a toggle for Auto Dodge Players
+AutomatedTab:AddToggle({
+    Name = "Auto Dodge Players",
     Default = false,
     Callback = function(bool)
-        RemoveHitboxEnabled = bool
-        if RemoveHitboxEnabled then
-            local LocalPlayer = game.Players.LocalPlayer
-            local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-            local function removeCollisionPart(character)
-                for destructionIteration = 1, 100 do
-                    wait()
-                    pcall(function()
-                        character:WaitForChild("CollisionPart"):Destroy()
-                        print("No More Hitbox")
-                    end)
-                end
-            end
-            removeCollisionPart(Character)
-            LocalPlayer.CharacterAdded:Connect(function(character)
-                removeCollisionPart(character)
-            end)
-        end
+        AutoDodgePlayersEnabled = bool
+    end
+})
+
+-- Add a slider for Player Dodge Distance
+AutomatedTab:AddSlider({
+    Name = "Player Dodge Distance",
+    Min = 10,
+    Max = 30,
+    Default = 15,
+    Color = Color3.fromRGB(255, 0, 0),
+    Increment = 1,
+    ValueName = "studs",
+    Callback = function(value)
+        PlayerDodgeDistance = value
     end
 })
 
 -- Add a toggle for Auto Pass Closest Player
-Tab:AddToggle({
+AutomatedTab:AddToggle({
     Name = "Auto Pass Closest Player",
     Default = false,
     Callback = function(bool)
@@ -156,14 +137,14 @@ Tab:AddToggle({
 
                             -- Spin when very close to the player
                             local function spinCharacter()
-                                while (LocalPlayer.Character.HumanoidRootPart.Position - targetPosition).magnitude <= 5 do
+                                while (LocalPlayer.Character.HumanoidRootPart.Position - targetPosition).magnitude <= SecureSpinDistance do
                                     LocalPlayer.Character.HumanoidRootPart.CFrame = LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(5), 0) -- Less intense spin
                                     wait(0.2) -- Slower spin to seem legit
                                 end
                             end
 
                             -- Check if within range to pass the bomb
-                            if (LocalPlayer.Character.HumanoidRootPart.Position - targetPosition).magnitude <= 5 then
+                            if (LocalPlayer.Character.HumanoidRootPart.Position - targetPosition).magnitude <= SecureSpinDistance then
                                 spinCharacter()
                                 -- Fire the bomb event
                                 BombEvent:FireServer(closestPlayer.Character, closestPlayer.Character:FindFirstChild("CollisionPart"))
@@ -179,7 +160,7 @@ Tab:AddToggle({
 })
 
 -- Add a toggle for Secure Spin
-Tab:AddToggle({
+AutomatedTab:AddToggle({
     Name = "Secure Spin",
     Default = false,
     Callback = function(bool)
@@ -188,7 +169,7 @@ Tab:AddToggle({
 })
 
 -- Add a slider for Secure Spin Distance
-Tab:AddSlider({
+AutomatedTab:AddSlider({
     Name = "Secure Spin Distance",
     Min = 1,
     Max = 20,
@@ -201,57 +182,117 @@ Tab:AddSlider({
     end
 })
 
--- Add a toggle for Auto Emote on Kill
-Tab:AddToggle({
-    Name = "Auto Emote on Kill",
+-- Other Features
+
+-- Add a toggle for Anti Slippery
+OtherTab:AddToggle({
+    Name = "Anti Slippery",
     Default = false,
     Callback = function(bool)
-        AutoEmoteEnabled = bool
-    end
-})
-
--- Add a dropdown to select an emote slot
-Tab:AddDropdown({
-    Name = "Select Emote Slot",
-    Default = "1",
-    Options = {"1", "2", "3", "4", "5", "6", "7", "8", "9"},
-    Callback = function(option)
-        EmoteSlot = tonumber(option)
-    end
-})
-
--- Function to start the bomb timer
-local function startBombTimer(duration)
-    local timeLeft = duration
-    TimerLabel.Text = "Time: " .. timeLeft .. "s"
-
-    while timeLeft > 0 do
-        wait(1)
-        timeLeft = timeLeft - 1
-        TimerLabel.Text = "Time: " .. timeLeft .. "s"
-        
-        if timeLeft <= 0 then
-            TimerLabel.Text = "Boom!"
-            -- Add explosion logic here if needed
+        AntiSlipperyEnabled = bool
+        if AntiSlipperyEnabled then
+            spawn(function()
+                local player = game.Players.LocalPlayer
+                local character = player.Character or player.CharacterAdded:Wait()
+                while AntiSlipperyEnabled do
+                    for _, part in pairs(character:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0.3, 0.5) -- Higher friction values
+                        end
+                    end
+                    wait(0.1) -- Adjust the wait time as needed
+                end
+            end)
+        else
+            local player = game.Players.LocalPlayer
+            local character = player.Character or player.CharacterAdded:Wait()
+            for _, part in pairs(character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.3, 0.5) -- Default friction values
+                end
+            end
         end
     end
+})
+
+-- Add a toggle for Remove Hitbox
+OtherTab:AddToggle({
+    Name = "Remove Hitbox",
+    Default = false,
+    Callback = function(bool)
+        RemoveHitboxEnabled = bool
+        if RemoveHitboxEnabled then
+            local LocalPlayer = game.Players.LocalPlayer
+            local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+            local function removeCollisionPart(character)
+                for destructionIteration = 1, 100 do
+                    wait()
+                    pcall(function()
+                        character:WaitForChild("CollisionPart"):Destroy()
+                        print("No More Hitbox")
+                    end)
+                end
+            end
+            removeCollisionPart(Character)
+            LocalPlayer.CharacterAdded:Connect(function(character)
+                removeCollisionPart(character)
+            end)
+        end
+    end
+})
+
+-- Function to dodge meteors
+local function dodgeMeteor(meteor)
+    local LocalPlayer = game.Players.LocalPlayer
+    local Character = LocalPlayer.Character
+    if Character and Character:FindFirstChild("HumanoidRootPart") then
+        local humanoidRootPart = Character.HumanoidRootPart
+        local dodgeDirection = (humanoidRootPart.Position - meteor.Position).unit * DodgeDistance
+        humanoidRootPart.CFrame = humanoidRootPart.CFrame + dodgeDirection
+    end
 end
 
--- Function to update the timer when the player receives the bomb
-local function onBombReceived(timeLeft)
-    BombTimer = timeLeft
-    startBombTimer(BombTimer)
+-- Detect meteors and dodge them
+game.Workspace.ChildAdded:Connect(function(child)
+    if not AutoDodgeEnabled then return end
+    if child:IsA("Part") and child.Name == "Meteor" then
+        child.Touched:Connect(function(hit)
+            if hit.Parent == game.Players.LocalPlayer.Character then
+                dodgeMeteor(child)
+            end
+        end)
+    end
+end)
+
+-- Function to dodge players with the bomb
+local function dodgePlayer(player)
+    local LocalPlayer = game.Players.LocalPlayer
+    local Character = LocalPlayer.Character
+    if Character and Character:FindFirstChild("HumanoidRootPart") then
+        local humanoidRootPart = Character.HumanoidRootPart
+        local dodgeDirection = (humanoidRootPart.Position - player.Character.HumanoidRootPart.Position).unit * PlayerDodgeDistance
+        humanoidRootPart.CFrame = humanoidRootPart.CFrame + dodgeDirection
+    end
 end
 
--- Simulate receiving the bomb with a RemoteEvent
-local BombReceivedEvent = Instance.new("RemoteEvent", game.ReplicatedStorage)
-BombReceivedEvent.Name = "BombReceivedEvent"
-
--- Connect the event to the function
-BombReceivedEvent.OnClientEvent:Connect(onBombReceived)
-
--- Example usage: Simulate receiving the bomb with 20 seconds left
-BombReceivedEvent:FireClient(game.Players.LocalPlayer, 20)
+-- Detect players with the bomb and dodge them
+game:GetService("RunService").Stepped:Connect(function()
+    if not AutoDodgePlayersEnabled then return end
+    local LocalPlayer = game.Players.LocalPlayer
+    local Character = LocalPlayer.Character
+    if Character and Character:FindFirstChild("HumanoidRootPart") then
+        for _, Player in next, game.Players:GetPlayers() do
+            if Player ~= LocalPlayer and Player.Character and Player.Character.Parent == workspace then
+                if Player.Character:FindFirstChild("Bomb") then
+                    local distance = (Character.HumanoidRootPart.Position - Player.Character.HumanoidRootPart.Position).magnitude
+                    if distance <= PlayerDodgeDistance then
+                        dodgePlayer(Player)
+                    end
+                end
+            end
+        end
+    end
+end)
 
 -- Create an update tab
 local UpdateTab = Window:MakeTab({Name = "Update", Icon = "rbxassetid://4483345998", PremiumOnly = false})
@@ -269,7 +310,11 @@ UpdateTab:AddLabel("- Increased spinning distance in Secure Spin")
 UpdateTab:AddLabel("Version 1.3.0:")
 UpdateTab:AddLabel("- Added slider for Secure Spin Distance")
 UpdateTab:AddLabel("Version 1.4.0:")
-UpdateTab:AddLabel("- Added visual timer for bomb")
+UpdateTab:AddLabel("- Added Auto Dodge Meteors feature")
+UpdateTab:AddLabel("Version 1.5.0:")
+UpdateTab:AddLabel("- Added Auto Dodge Players feature")
+UpdateTab:AddLabel("Version 1.6.0:")
+UpdateTab:AddLabel("- Organized features into Visual, Automated, and Others categories")
 
 -- Toggle the visibility of the menu
 Toggle.MouseButton1Click:Connect(function() 
@@ -304,9 +349,9 @@ game:GetService("RunService").Stepped:Connect(function()
                 end
             end
 
-            if closestPlayer and closestDistance <= SecureSpinDistance then -- Use the selected spin distance
+            if closestPlayer and closestDistance <= SecureSpinDistance then
                 -- Spin when very close to the player
-                while (LocalPlayer.Character.HumanoidRootPart.Position - closestPlayer.Character.HumanoidRootPart.Position).magnitude <= SecureSpinDistance do -- Use the selected spin distance
+                while (LocalPlayer.Character.HumanoidRootPart.Position - closestPlayer.Character.HumanoidRootPart.Position).magnitude <= SecureSpinDistance do
                     if not SecureSpinEnabled then break end
                     LocalPlayer.Character.HumanoidRootPart.CFrame = LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(5), 0) -- Less intense spin
                     wait(0.2) -- Slower spin to seem legit
@@ -315,22 +360,3 @@ game:GetService("RunService").Stepped:Connect(function()
         end
     end
 end)
-
--- Auto Emote on Kill Functionality
-local function onPlayerAdded(player)
-    player.CharacterAdded:Connect(function(character)
-        local humanoid = character:WaitForChild("Humanoid")
-        humanoid.Died:Connect(function()
-            if AutoEmoteEnabled and character == game.Players.LocalPlayer.Character then
-                -- Trigger selected emote slot
-                local EmoteEvent = game.ReplicatedStorage:WaitForChild("PerformEmote")
-                EmoteEvent:FireServer(EmoteSlot)
-            end
-        end)
-    end)
-end
-
-game.Players.PlayerAdded:Connect(onPlayerAdded)
-for _, player in ipairs(game.Players:GetPlayers()) do
-    onPlayerAdded(player)
-end
