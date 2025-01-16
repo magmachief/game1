@@ -41,12 +41,62 @@ local AutoPassEnabled = false
 local SecureSpinEnabled = false
 local SecureSpinDistance = 5
 local DodgeDistance = 10
-local SafeArea = {MinX = -100, MaxX = 100, MinZ = -100, MaxZ = 100}
+local SafeStructures = {} -- List of safe structures
 
 -- Create Tabs in the Menu
 local AutomatedTab = Window:MakeTab({Name = "Automated", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 local OtherTab = Window:MakeTab({Name = "Others", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 local UpdateTab = Window:MakeTab({Name = "Update", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+
+-- Console UI
+local ConsoleFrame = Instance.new("Frame")
+ConsoleFrame.Name = "ConsoleFrame"
+ConsoleFrame.Parent = ScreenGui
+ConsoleFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+ConsoleFrame.BackgroundTransparency = 0.5
+ConsoleFrame.Position = UDim2.new(0, 10, 0.5, 0)
+ConsoleFrame.Size = UDim2.new(0, 300, 0, 200)
+ConsoleFrame.Visible = false
+
+local ConsoleTextBox = Instance.new("TextBox")
+ConsoleTextBox.Name = "ConsoleTextBox"
+ConsoleTextBox.Parent = ConsoleFrame
+ConsoleTextBox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+ConsoleTextBox.BackgroundTransparency = 1
+ConsoleTextBox.Size = UDim2.new(1, 0, 1, -30)
+ConsoleTextBox.Position = UDim2.new(0, 0, 0, 0)
+ConsoleTextBox.Font = Enum.Font.Code
+ConsoleTextBox.Text = ""
+ConsoleTextBox.TextColor3 = Color3.fromRGB(0, 255, 0)
+ConsoleTextBox.TextWrapped = true
+ConsoleTextBox.TextYAlignment = Enum.TextYAlignment.Top
+ConsoleTextBox.ClearTextOnFocus = false
+ConsoleTextBox.TextXAlignment = Enum.TextXAlignment.Left
+ConsoleTextBox.TextSize = 14
+ConsoleTextBox.MultiLine = true
+ConsoleTextBox.ReadOnly = true
+
+local ConsoleToggleButton = Instance.new("TextButton")
+ConsoleToggleButton.Name = "ConsoleToggleButton"
+ConsoleToggleButton.Parent = ConsoleFrame
+ConsoleToggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+ConsoleToggleButton.Size = UDim2.new(1, 0, 0, 30)
+ConsoleToggleButton.Position = UDim2.new(0, 0, 1, -30)
+ConsoleToggleButton.Font = Enum.Font.SourceSans
+ConsoleToggleButton.Text = "Toggle Console"
+ConsoleToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ConsoleToggleButton.TextSize = 14
+
+-- Function to log messages to console
+local function logToConsole(message)
+    ConsoleTextBox.Text = ConsoleTextBox.Text .. "\n" .. message
+    ConsoleTextBox.TextYAlignment = Enum.TextYAlignment.Bottom -- Scroll to the bottom
+end
+
+-- Toggle Console Visibility
+ConsoleToggleButton.MouseButton1Click:Connect(function()
+    ConsoleFrame.Visible = not ConsoleFrame.Visible
+end)
 
 -- AUTOMATED FEATURES
 
@@ -57,6 +107,7 @@ AutomatedTab:AddToggle({
     Default = true,
     Callback = function(bool)
         AutoDodgePlayersEnabled = bool
+        logToConsole("Auto Dodge Players: " .. tostring(bool))
     end
 })
 AutomatedTab:AddSlider({
@@ -69,6 +120,7 @@ AutomatedTab:AddSlider({
     ValueName = "studs",
     Callback = function(value)
         PlayerDodgeDistance = value
+        logToConsole("Player Dodge Distance set to: " .. tostring(value) .. " studs")
     end
 })
 
@@ -79,6 +131,7 @@ AutomatedTab:AddToggle({
     Default = true,
     Callback = function(bool)
         CollectCoinsEnabled = bool
+        logToConsole("Collect Coins: " .. tostring(bool))
     end
 })
 
@@ -89,6 +142,7 @@ AutomatedTab:AddToggle({
     Default = false,
     Callback = function(bool)
         AutoPassEnabled = bool
+        logToConsole("Auto Pass Bomb: " .. tostring(bool))
         if AutoPassEnabled then
             local LocalPlayer = game.Players.LocalPlayer
             local PathfindingService = game:GetService("PathfindingService")
@@ -133,6 +187,7 @@ AutomatedTab:AddToggle({
                                 end
                             end
                             BombEvent:FireServer(closestPlayer.Character, closestPlayer.Character:FindFirstChild("CollisionPart"))
+                            logToConsole("Passed bomb to: " .. closestPlayer.Name)
                         end
                     end
                 end)
@@ -145,6 +200,7 @@ AutomatedTab:AddToggle({
     Default = false,
     Callback = function(bool)
         SecureSpinEnabled = bool
+        logToConsole("Secure Spin: " .. tostring(bool))
     end
 })
 AutomatedTab:AddSlider({
@@ -157,6 +213,7 @@ AutomatedTab:AddSlider({
     ValueName = "studs",
     Callback = function(value)
         SecureSpinDistance = value
+        logToConsole("Secure Spin Distance set to: " .. tostring(value) .. " studs")
     end
 })
 
@@ -167,6 +224,7 @@ AutomatedTab:AddToggle({
     Default = false,
     Callback = function(bool)
         RemoveHitboxEnabled = bool
+        logToConsole("Remove Hitbox: " .. tostring(bool))
         if RemoveHitboxEnabled then
             local LocalPlayer = game.Players.LocalPlayer
             local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
@@ -195,6 +253,7 @@ OtherTab:AddToggle({
     Default = false,
     Callback = function(bool)
         AntiSlipperyEnabled = bool
+        logToConsole("Anti Slippery: " .. tostring(bool))
         if AntiSlipperyEnabled then
             spawn(function()
                 local player = game.Players.LocalPlayer
@@ -228,10 +287,14 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 
--- Helper Function: Check if a position is within the Safe Area
-local function isWithinSafeArea(position)
-    return position.X >= SafeArea.MinX and position.X <= SafeArea.MaxX
-        and position.Z >= SafeArea.MinZ and position.Z <= SafeArea.MaxZ
+-- Helper Function: Check if a position is within Safe Structures
+local function isWithinSafeStructures(position)
+    for _, structure in pairs(SafeStructures) do
+        if (position - structure.Position).magnitude <= structure.Size.Magnitude / 2 then
+            return true
+        end
+    end
+    return false
 end
 
 -- Helper Function: Move to a Target Position
@@ -283,13 +346,13 @@ local function dodgePlayers()
     if closestPlayer then
         local dodgeDirection = (Character.HumanoidRootPart.Position - closestPlayer.Character.HumanoidRootPart.Position).unit * PlayerDodgeDistance
         local targetPosition = Character.HumanoidRootPart.Position + dodgeDirection
-        if isWithinSafeArea(targetPosition) then
+        if isWithinSafeStructures(targetPosition) then
             moveToTarget(targetPosition)
         end
     end
 end
 
--- Collect Coins Around the Map
+-- Collect Coins Around Safe Structures
 local function collectCoins()
     local closestCoin = nil
     local closestDistance = math.huge
@@ -297,7 +360,7 @@ local function collectCoins()
     for _, coin in pairs(workspace:GetChildren()) do
         if coin:IsA("Part") and coin.Name == "Coin" then
             local distance = (Character.HumanoidRootPart.Position - coin.Position).magnitude
-            if distance < closestDistance and isWithinSafeArea(coin.Position) then
+            if distance < closestDistance and isWithinSafeStructures(coin.Position) then
                 closestDistance = distance
                 closestCoin = coin
             end
@@ -391,3 +454,5 @@ UpdateTab:AddLabel("Version 1.6.0:")
 UpdateTab:AddLabel("- Organized features into Visual, Automated, and Others categories")
 UpdateTab:AddLabel("Version 1.7.0:")
 UpdateTab:AddLabel("- Added Remove Hitbox feature")
+-- Log the initialization
+logToConsole("Console initialized successfully.")
