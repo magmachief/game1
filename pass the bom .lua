@@ -15,7 +15,7 @@ Toggle.Image = "rbxassetid://18594014746" -- Your asset ID
 Toggle.ScaleType = Enum.ScaleType.Fit
 
 -- Make the button circular
-local Corner = Instance.new("")
+local Corner = Instance.new("UICorner")
 Corner.CornerRadius = UDim.new(0.5, 0)
 Corner.Parent = Toggle
 
@@ -35,6 +35,7 @@ local SecureSpinEnabled = false
 local SecureSpinDistance = 5 -- Default secure spin distance
 local AutoDodgePlayersEnabled = false
 local PlayerDodgeDistance = 15 -- Default distance to dodge players
+local CollectCoinsEnabled = false
 local SafeArea = {MinX = -100, MaxX = 100, MinZ = -100, MaxZ = 100} -- Define a safe area boundary
 
 -- Create tabs for different categories
@@ -90,6 +91,15 @@ AutomatedTab:AddSlider({
     end
 })
 
+-- Add a toggle for Collecting Coins
+AutomatedTab:AddToggle({
+    Name = "Collect Coins",
+    Default = false,
+    Callback = function(bool)
+        CollectCoinsEnabled = bool
+    end
+})
+
 -- Add a toggle for Auto Pass Closest Player
 AutomatedTab:AddToggle({
     Name = "Auto Pass Closest Player",
@@ -97,6 +107,7 @@ AutomatedTab:AddToggle({
     Callback = function(bool)
         AutoPassEnabled = bool
         if AutoPassEnabled then
+            local PathfindingService = game:GetService("PathfindingService")
             local LocalPlayer = game.Players.LocalPlayer
             local Character = LocalPlayer.Character
 
@@ -128,12 +139,28 @@ AutomatedTab:AddToggle({
                         if closestPlayer then
                             warn("Hitting " .. closestPlayer.Name)
                             
-                            -- Move towards the closest player
+                            -- Move towards the closest player using pathfinding
                             local targetPosition = closestPlayer.Character.HumanoidRootPart.Position
                             local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
                             
                             if humanoid then
-                                humanoid:MoveTo(targetPosition)
+                                local path = PathfindingService:CreatePath({
+                                    AgentRadius = 2,
+                                    AgentHeight = 5,
+                                    AgentCanJump = true,
+                                    AgentJumpHeight = 10,
+                                    AgentMaxSlope = 45,
+                                    AgentCanClimb = false,
+                                    AgentCanSwim = false
+                                })
+                                path:ComputeAsync(LocalPlayer.Character.HumanoidRootPart.Position, targetPosition)
+                                local waypoints = path:GetWaypoints()
+
+                                for _, waypoint in ipairs(waypoints) do
+                                    if not AutoPassEnabled then break end
+                                    humanoid:MoveTo(waypoint.Position)
+                                    humanoid.MoveToFinished:Wait()
+                                end
                             end
 
                             -- Spin when very close to the player
@@ -277,6 +304,31 @@ game.Workspace.ChildAdded:Connect(function(child)
     end
 end)
 
+-- Function to collect coins
+local function collectCoins()
+    local LocalPlayer = game.Players.LocalPlayer
+    local Character = LocalPlayer.Character
+    if Character and Character:FindFirstChild("HumanoidRootPart") then
+        local humanoid = Character:FindFirstChild("Humanoid")
+        local closestCoin = nil
+        local closestDistance = math.huge
+
+        for _, coin in pairs(workspace:GetChildren()) do
+            if coin:IsA("Part") and coin.Name == "Coin" then
+                local distance = (Character.HumanoidRootPart.Position - coin.Position).magnitude
+                if distance < closestDistance then
+                    closestDistance = distance
+                    closestCoin = coin
+                end
+            end
+        end
+
+        if closestCoin then
+            humanoid:MoveTo(closestCoin.Position)
+        end
+    end
+end
+
 -- Function to dodge players with the bomb
 local function dodgePlayer(player)
     local LocalPlayer = game.Players.LocalPlayer
@@ -382,5 +434,12 @@ game:GetService("RunService").Stepped:Connect(function()
                 wait(0.5) -- Wait for 0.5 seconds before resuming spin
             end
         end
+    end
+end)
+
+-- Coin Collection Functionality
+game:GetService("RunService").Stepped:Connect(function()
+    if CollectCoinsEnabled then
+        collectCoins()
     end
 end)
