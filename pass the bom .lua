@@ -46,12 +46,10 @@ local SafeArea = {MinX = -100, MaxX = 100, MinZ = -100, MaxZ = 100}
 -- Create Tabs in the Menu
 local AutomatedTab = Window:MakeTab({Name = "Automated", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 local OtherTab = Window:MakeTab({Name = "Others", Icon = "rbxassetid://4483345998", PremiumOnly = false})
-local UpdateTab = Window:MakeTab({Name = "Update", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 
 -- AUTOMATED FEATURES
 
--- Section: Auto Dodge
-AutomatedTab:AddLabel("Auto Dodge Features"):SetTextColor(Color3.fromRGB(0, 255, 127))
+-- Toggle for Auto Dodge Players
 AutomatedTab:AddToggle({
     Name = "Auto Dodge Players",
     Default = true,
@@ -59,12 +57,14 @@ AutomatedTab:AddToggle({
         AutoDodgePlayersEnabled = bool
     end
 })
+
+-- Slider for Player Dodge Distance
 AutomatedTab:AddSlider({
     Name = "Player Dodge Distance",
     Min = 10,
     Max = 30,
     Default = 15,
-    Color = Color3.fromRGB(0, 255, 127),
+    Color = Color3.fromRGB(255, 0, 0),
     Increment = 1,
     ValueName = "studs",
     Callback = function(value)
@@ -72,8 +72,7 @@ AutomatedTab:AddSlider({
     end
 })
 
--- Section: Collect Coins
-AutomatedTab:AddLabel("Coin Collection"):SetTextColor(Color3.fromRGB(255, 223, 0))
+-- Toggle for Collect Coins
 AutomatedTab:AddToggle({
     Name = "Collect Coins",
     Default = true,
@@ -82,8 +81,7 @@ AutomatedTab:AddToggle({
     end
 })
 
--- Section: Bomb Handling
-AutomatedTab:AddLabel("Bomb Handling"):SetTextColor(Color3.fromRGB(255, 69, 0))
+-- Add a toggle for Auto Pass Bomb
 AutomatedTab:AddToggle({
     Name = "Auto Pass Bomb",
     Default = false,
@@ -140,6 +138,8 @@ AutomatedTab:AddToggle({
         end
     end
 })
+
+-- Add a toggle for Secure Spin
 AutomatedTab:AddToggle({
     Name = "Secure Spin",
     Default = false,
@@ -147,12 +147,14 @@ AutomatedTab:AddToggle({
         SecureSpinEnabled = bool
     end
 })
+
+-- Slider for Secure Spin Distance
 AutomatedTab:AddSlider({
     Name = "Secure Spin Distance",
     Min = 1,
     Max = 20,
     Default = 5,
-    Color = Color3.fromRGB(255, 69, 0),
+    Color = Color3.fromRGB(255, 0, 0),
     Increment = 1,
     ValueName = "studs",
     Callback = function(value)
@@ -160,36 +162,9 @@ AutomatedTab:AddSlider({
     end
 })
 
--- Section: Miscellaneous
-AutomatedTab:AddLabel("Miscellaneous"):SetTextColor(Color3.fromRGB(127, 255, 127))
-AutomatedTab:AddToggle({
-    Name = "Remove Hitbox",
-    Default = false,
-    Callback = function(bool)
-        RemoveHitboxEnabled = bool
-        if RemoveHitboxEnabled then
-            local LocalPlayer = game.Players.LocalPlayer
-            local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-            local function removeCollisionPart(character)
-                for destructionIteration = 1, 100 do
-                    wait()
-                    pcall(function()
-                        character:WaitForChild("CollisionPart"):Destroy()
-                    end)
-                end
-            end
-            removeCollisionPart(Character)
-            LocalPlayer.CharacterAdded:Connect(function(character)
-                removeCollisionPart(character)
-            end)
-        end
-    end
-})
-
 -- OTHER FEATURES
 
 -- Toggle for Anti Slippery
-OtherTab:AddLabel("Other Features"):SetTextColor(Color3.fromRGB(0, 191, 255))
 OtherTab:AddToggle({
     Name = "Anti Slippery",
     Default = false,
@@ -216,6 +191,31 @@ OtherTab:AddToggle({
                     part.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.3, 0.5)
                 end
             end
+        end
+    end
+})
+
+-- Toggle for Remove Hitbox
+OtherTab:AddToggle({
+    Name = "Remove Hitbox",
+    Default = false,
+    Callback = function(bool)
+        RemoveHitboxEnabled = bool
+        if RemoveHitboxEnabled then
+            local LocalPlayer = game.Players.LocalPlayer
+            local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+            local function removeCollisionPart(character)
+                for destructionIteration = 1, 100 do
+                    wait()
+                    pcall(function()
+                        character:WaitForChild("CollisionPart"):Destroy()
+                    end)
+                end
+            end
+            removeCollisionPart(Character)
+            LocalPlayer.CharacterAdded:Connect(function(character)
+                removeCollisionPart(character)
+            end)
         end
     end
 })
@@ -330,64 +330,4 @@ Toggle.MouseButton1Click:Connect(function()
 end)
 
 -- Initialize OrionLib UI
-OrionLib:Init()
-
--- Secure Spin Functionality
-game:GetService("RunService").Stepped:Connect(function()
-    if SecureSpinEnabled then
-        local LocalPlayer = game.Players.LocalPlayer
-        local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-
-        if Character:FindFirstChild("Bomb") then
-            local closestPlayer = nil
-            local closestDistance = math.huge
-
-            for _, Player in next, game.Players:GetPlayers() do
-                if Player ~= LocalPlayer and Player.Character and Player.Character.Parent == workspace then
-                    local distance = (LocalPlayer.Character.HumanoidRootPart.Position - Player.Character.HumanoidRootPart.Position).magnitude
-                    if distance < closestDistance then
-                        closestDistance = distance
-                        closestPlayer = Player
-                    end
-                end
-            end
-
-            if closestPlayer and closestDistance <= SecureSpinDistance then
-                -- Spin when very close to the player
-                local spinTime = 0
-                while (LocalPlayer.Character.HumanoidRootPart.Position - closestPlayer.Character.HumanoidRootPart.Position).magnitude <= SecureSpinDistance do
-                    if not SecureSpinEnabled then break end
-                    LocalPlayer.Character.HumanoidRootPart.CFrame = LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(5), 0) -- Less intense spin
-                    wait(0.2) -- Slower spin to seem legit
-                    spinTime = spinTime + 0.2
-                    if spinTime >= 1 then -- Spin for 1 second and then pause
-                        break
-                    end
-                end
-                wait(0.5) -- Wait for 0.5 seconds before resuming spin
-            end
-        end
-    end
-end)
-
--- Update Logs
-UpdateTab:AddLabel("Update Logs")
-UpdateTab:AddLabel("Version 1.1.0:")
-UpdateTab:AddLabel("- Added Auto Emote feature")
-UpdateTab:AddLabel("- Improved Secure Spin functionality")
-UpdateTab:AddLabel("- Removed bomb color picker")
-UpdateTab:AddLabel("- Removed vxghmod button")
-UpdateTab:AddLabel("Version 1.2.0:")
-UpdateTab:AddLabel("- Separated Secure Spin from Auto Pass Bomb")
-UpdateTab:AddLabel("- Added emote slot selection for Auto Emote on Kill")
-UpdateTab:AddLabel("- Increased spinning distance in Secure Spin")
-UpdateTab:AddLabel("Version 1.3.0:")
-UpdateTab:AddLabel("- Added slider for Secure Spin Distance")
-UpdateTab:AddLabel("Version 1.4.0:")
-UpdateTab:AddLabel("- Added Auto Dodge Meteors feature")
-UpdateTab:AddLabel("Version 1.5.0:")
-UpdateTab:AddLabel("- Added Auto Dodge Players feature")
-UpdateTab:AddLabel("Version 1.6.0:")
-UpdateTab:AddLabel("- Organized features into Visual, Automated, and Others categories")
-UpdateTab:AddLabel("Version 1.7.0:")
-UpdateTab:AddLabel("- Added Remove Hitbox feature")
+OrionLib:Init() 
