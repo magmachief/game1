@@ -1,38 +1,67 @@
--- Server-Side Script
+-- Services
 local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- Create RemoteEvent for bomb timer
-local BombTimerEvent = Instance.new("RemoteEvent")
-BombTimerEvent.Name = "BombTimerEvent"
-BombTimerEvent.Parent = ReplicatedStorage
+-- RemoteEvent for sending bomb info to clients
+local BombInfoEvent = Instance.new("RemoteEvent")
+BombInfoEvent.Name = "BombInfoEvent"
+BombInfoEvent.Parent = ReplicatedStorage
 
--- Function to handle bomb explosion
-local function handleBombExplosion(player)
-    -- Create a bomb and set its timer
-    local bomb = Instance.new("Part")
-    bomb.Name = "Bomb"
-    bomb.Parent = player.Character
-    local timer = Instance.new("IntValue")
-    timer.Name = "Timer"
-    timer.Value = 10  -- Set initial timer value (e.g., 10 seconds)
-    timer.Parent = bomb
-    
-    -- Start countdown
-    while timer.Value > 0 do
-        BombTimerEvent:FireClient(player, timer.Value)  -- Send timer value to client
-        wait(1)
-        timer.Value = timer.Value - 1
+-- Variables
+local bomb = nil
+local bombHolder = nil
+local bombTimer = 0
+
+-- Function to check for the bomb in the workspace
+local function findBomb()
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Part") and obj.Name == "Bomb" then
+            return obj
+        end
     end
-    
-    -- Bomb explodes
-    BombTimerEvent:FireClient(player, 0)  -- Send final timer value to client
-    bomb:Destroy()  -- Destroy the bomb (or handle explosion logic)
+    return nil
 end
 
--- Simulate a player receiving the bomb and starting the timer
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function(character)
-        handleBombExplosion(player)
-    end)
-end)
+-- Function to determine the bomb holder
+local function getBombHolder(bombPart)
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local distance = (player.Character.HumanoidRootPart.Position - bombPart.Position).Magnitude
+            if distance < 5 then -- Bomb is within 5 studs of the player
+                return player
+            end
+        end
+    end
+    return nil
+end
+
+-- Function to track bomb and update timer
+local function trackBomb()
+    bomb = findBomb()
+    if bomb then
+        bombHolder = getBombHolder(bomb)
+        if bomb:FindFirstChild("Timer") then
+            bombTimer = bomb.Timer.Value -- Use the game's timer if it exists
+        else
+            bombTimer = 10 -- Fallback to a default timer
+        end
+    else
+        bombHolder = nil
+        bombTimer = 0
+    end
+end
+
+-- Main loop to update bomb information
+while true do
+    trackBomb()
+    if bombHolder then
+        BombInfoEvent:FireAllClients(bombHolder, bombTimer)
+    else
+        BombInfoEvent:FireAllClients(nil, 0) -- No bomb detected
+    end
+    wait(1) -- Update every second
+    if bombTimer > 0 then
+        bombTimer = bombTimer - 1
+    end
+end
