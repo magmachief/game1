@@ -57,6 +57,8 @@ local Window = OrionLib:MakeWindow({
 local AutoPassEnabled = true
 local TargetPlayer = nil  -- Variable to store the target player
 local PreferredTargets = {"PlayerName1"}  -- Replace with player names you want to prioritize
+local LastPathComputeTime = 0  -- Last time path was computed
+local PathComputeInterval = 1  -- Time interval (in seconds) between path computations
 
 local PathfindingService = game:GetService("PathfindingService")
 local RunService = game:GetService("RunService")
@@ -143,6 +145,14 @@ local function moveToTarget(targetPosition, callback)
         logMessage("Humanoid not found")
         return
     end
+
+    -- Throttle path computation to reduce lag
+    if tick() - LastPathComputeTime < PathComputeInterval then
+        logMessage("Path computation throttled")
+        return
+    end
+
+    LastPathComputeTime = tick()
 
     local path = PathfindingService:CreatePath({
         AgentRadius = 2,
