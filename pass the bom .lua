@@ -1,10 +1,9 @@
 --[[
-    Full "Pass the Bomb" script with new features:
-    1. Enhanced Auto Pass Bomb logic with optional randomization and preferred targets
-    2. Bomb Timer display
-    3. Updates Log in the menu
-    4. Console tab to show execution logs
-    5. Retains original functionalities (Auto Dodge, Collect Coins, etc.)
+    Full "Pass the Bomb" Script with Enhanced Features:
+    1. Enhanced Auto Pass Bomb logic with optional randomization and preferred targets.
+    2. Updates Log in the menu.
+    3. Console tab to show execution logs.
+    4. Retains original functionalities (Auto Dodge, Collect Coins, etc.).
 --]]
 
 --========================--
@@ -21,13 +20,13 @@ ScreenGui.ResetOnSpawn = false
 local Toggle = Instance.new("ImageButton")
 Toggle.Name = "Toggle"
 Toggle.Parent = ScreenGui
-Toggle.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-Toggle.Position = UDim2.new(0, 50, 0, 50)
-Toggle.Size = UDim2.new(0, 60, 0, 60)
-Toggle.Image = "rbxassetid://18594014746"
+Toggle.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Red background
+Toggle.Position = UDim2.new(0.5, -30, 0, 50) -- Positioned near the top center
+Toggle.Size = UDim2.new(0, 60, 0, 60) -- 60x60 pixels
+Toggle.Image = "rbxassetid://18594014746" -- Replace with your desired image asset ID
 Toggle.ScaleType = Enum.ScaleType.Fit
 
--- Make the toggle button circular
+-- Make the Toggle Button Circular
 local Corner = Instance.new("UICorner")
 Corner.CornerRadius = UDim.new(0.5, 0)
 Corner.Parent = Toggle
@@ -46,14 +45,15 @@ local Window = OrionLib:MakeWindow({
     IntroText = "Yon Menu",
     SaveConfig = true,
     ConfigFolder = "YonMenu_Advanced",
-    IntroIcon = "rbxassetid://9876543210",  -- Example icon ID (replace if desired)
-    Icon = "rbxassetid://9876543210",       -- Example icon ID (replace if desired)
+    IntroIcon = "rbxassetid://9876543210",  -- Replace with your desired intro icon ID
+    Icon = "rbxassetid://9876543210",       -- Replace with your desired window icon ID
 })
 
 --========================--
 --   GLOBAL VARIABLES     --
 --========================--
 
+-- Feature Toggles
 local AutoDodgePlayersEnabled = true
 local PlayerDodgeDistance = 15
 local CollectCoinsEnabled = true
@@ -61,22 +61,26 @@ local AntiSlipperyEnabled = false
 local RemoveHitboxEnabled = false
 local AutoPassEnabled = false
 local UseRandomPassing = false            -- Determines whether to pick a random target or first in list
-local PreferredTargets = {}               -- List of players you want to target first, if in range
+local PreferredTargets = {"PlayerName1"}  -- Replace with player names you want to prioritize
+
+-- Additional Features
 local SecureSpinEnabled = false
 local SecureSpinDistance = 5
 local DodgeDistance = 10
-local SafeArea = {MinX = -100, MaxX = 100, MinZ = -100, MaxZ = 100}
+local SafeArea = {MinX = -100, MaxX = 100, MinZ = -100, MaxZ = 100} -- Define your game's safe area coordinates
 
--- Bomb passing range and short fuse threshold
+-- Bomb Parameters
 local BombPassRange = 25
 local ShortFuseThreshold = 5
 
--- Services
+-- Roblox Services
 local PathfindingService = game:GetService("PathfindingService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+local CollectionService = game:GetService("CollectionService")
 
+-- Player Character
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 
 --========================--
@@ -85,16 +89,16 @@ local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 
 local UpdateLogTab = Window:MakeTab({
     Name = "Updates Log",
-    Icon = "rbxassetid://4483345998",
+    Icon = "rbxassetid://4483345998", -- Replace with your desired icon ID
     PremiumOnly = false
 })
 
--- You can list your version notes or updates here
+-- List of version updates or changelogs
 UpdateLogTab:AddParagraph("Changelog", [[
 1. Added random/targeted auto pass logic.
-2. Implemented bomb timer display.
-3. Introduced a console tab for execution logs.
-4. Enhanced user interface with OrionLib advanced features.
+2. Introduced a console tab for execution logs.
+3. Enhanced user interface with OrionLib advanced features.
+4. Improved Auto Collect Coins functionality.
 ]])
 
 --========================--
@@ -103,7 +107,7 @@ UpdateLogTab:AddParagraph("Changelog", [[
 
 local ConsoleTab = Window:MakeTab({
     Name = "Console",
-    Icon = "rbxassetid://4483345998",
+    Icon = "rbxassetid://4483345998", -- Replace with your desired icon ID
     PremiumOnly = false
 })
 
@@ -113,7 +117,7 @@ local logDisplay
 -- Helper function to refresh log display
 local function refreshLogDisplay()
     if logDisplay then
-        -- Rebuild the text from the logs table
+        -- Combine all log messages into a single string separated by newlines
         local combined = table.concat(logs, "\n")
         logDisplay:Set(combined)
     end
@@ -129,36 +133,6 @@ end
 logDisplay = ConsoleTab:AddParagraph("Execution Logs", "")
 refreshLogDisplay()
 
---========================--
---     BOMB TIMER UI      --
---========================--
-
-local TimerLabel = Instance.new("TextLabel")
-TimerLabel.Name = "BombTimerLabel"
-TimerLabel.Parent = ScreenGui
-TimerLabel.Size = UDim2.new(0, 200, 0, 50)
-TimerLabel.Position = UDim2.new(0.5, -100, 0, 10)
-TimerLabel.BackgroundTransparency = 0.4
-TimerLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-TimerLabel.TextScaled = true
-TimerLabel.Text = "Bomb Timer: N/A"
-
--- Updates the bomb timer label if a bomb with 'BombTimeLeft' is found
-local function updateBombTimer()
-    local char = LocalPlayer.Character
-    if not char then
-        TimerLabel.Text = "Bomb Timer: N/A"
-        return
-    end
-    local Bomb = char:FindFirstChild("Bomb")
-    if Bomb and Bomb:FindFirstChild("BombTimeLeft") then
-        local timeLeft = Bomb.BombTimeLeft.Value
-        TimerLabel.Text = "Bomb Timer: " .. tostring(timeLeft) .. "s"
-    else
-        TimerLabel.Text = "Bomb Timer: N/A"
-    end
-end
 --========================--
 --   AUTO PASS BOMB LOGIC --
 --========================--
@@ -199,8 +173,7 @@ local function getValidPlayers(bombTimeLeft)
     return validPreferred, fallbackList
 end
 
-local isSpinning = false -- A flag to manage spinning state
-
+-- Function to pass the bomb to a chosen player
 local function passBombIfNeeded()
     local char = LocalPlayer.Character
     if not char then return end
@@ -208,69 +181,44 @@ local function passBombIfNeeded()
     local bomb = char:FindFirstChild("Bomb")
     if not bomb then return end
 
-    -- Bomb RemoteEvent
+    local bombTimeValue = bomb:FindFirstChild("BombTimeLeft")
+    local bombTimeLeft = bombTimeValue and bombTimeValue.Value or 9999
+
+    -- If the bomb is about to explode, pass as soon as possible
     local BombEvent = bomb:FindFirstChild("RemoteEvent")
     if not BombEvent then return end
 
-    local bombTimeLeft = bomb:FindFirstChild("BombTimeLeft") and bomb.BombTimeLeft.Value or 999
     local validPreferred, fallbackList = getValidPlayers(bombTimeLeft)
-    local target = nil
 
-    -- Decide target based on preference or fallback
+    -- If we have valid preferred targets and time left
     if #validPreferred > 0 then
+        local chosen
         if UseRandomPassing then
-            target = validPreferred[math.random(#validPreferred)]
+            chosen = validPreferred[math.random(#validPreferred)]
         else
-            target = validPreferred[1]
+            chosen = validPreferred[1]
         end
-    elseif #fallbackList > 0 then
+
+        if chosen.Character and chosen.Character:FindFirstChild("CollisionPart") then
+            BombEvent:FireServer(chosen.Character, chosen.Character.CollisionPart)
+            logMessage("Bomb passed to preferred target: " .. chosen.Name)
+            return
+        end
+    end
+
+    -- Otherwise, pass to fallback
+    if #fallbackList > 0 then
+        local fallback
         if UseRandomPassing then
-            target = fallbackList[math.random(#fallbackList)]
+            fallback = fallbackList[math.random(#fallbackList)]
         else
-            target = fallbackList[1]
+            fallback = fallbackList[1]
         end
-    end
 
-    -- Spin logic: Spin only if a target is nearby and the bomb is held
-    local function startSpinning()
-        if isSpinning then return end -- Prevent multiple spin loops
-        isSpinning = true
-        spawn(function()
-            while isSpinning and char and bomb and target do
-                local humanoidRootPart = char:FindFirstChild("HumanoidRootPart")
-                local targetPart = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
-                if humanoidRootPart and targetPart then
-                    -- Slightly adjust the facing direction towards the target while allowing movement
-                    local lookVector = (targetPart.Position - humanoidRootPart.Position).unit
-                    humanoidRootPart.CFrame = humanoidRootPart.CFrame:Lerp(
-                        CFrame.lookAt(humanoidRootPart.Position, humanoidRootPart.Position + lookVector),
-                        0.2 -- Adjust this value for smoother or quicker turning
-                    )
-                    -- Add a spin for effect
-                    humanoidRootPart.CFrame *= CFrame.Angles(0, math.rad(10), 0) -- Adjust spin speed here
-                end
-                wait(0.05) -- Frequency of the spin
-            end
-        end)
-    end
-
-    -- Stop spinning function
-    local function stopSpinning()
-        isSpinning = false -- This will stop the spin loop
-    end
-
-    -- Pass the bomb if a valid target is found
-    if target and target.Character and target.Character:FindFirstChild("CollisionPart") then
-        startSpinning() -- Start spinning when near a valid target and bomb is held
-
-        -- Fire the server event to pass the bomb
-        BombEvent:FireServer(target.Character, target.Character.CollisionPart)
-        logMessage("Bomb passed to: " .. target.Name)
-
-        stopSpinning() -- Stop spinning after passing the bomb
-    else
-        logMessage("No valid target found to pass the bomb.")
-        stopSpinning() -- Ensure spinning stops if no valid target is found
+        if fallback.Character and fallback.Character:FindFirstChild("CollisionPart") then
+            BombEvent:FireServer(fallback.Character, fallback.Character.CollisionPart)
+            logMessage("Bomb passed to fallback: " .. fallback.Name)
+        end
     end
 end
 
@@ -280,11 +228,11 @@ end
 
 local AutomatedTab = Window:MakeTab({
     Name = "Automated",
-    Icon = "rbxassetid://4483345998",
+    Icon = "rbxassetid://4483345998", -- Replace with your desired icon ID
     PremiumOnly = false
 })
 
--- Auto Dodge Players
+-- Auto Dodge Players Toggle
 AutomatedTab:AddToggle({
     Name = "Auto Dodge Players",
     Default = AutoDodgePlayersEnabled,
@@ -294,7 +242,7 @@ AutomatedTab:AddToggle({
     end
 })
 
--- Slider for Distance
+-- Player Dodge Distance Slider
 AutomatedTab:AddSlider({
     Name = "Player Dodge Distance",
     Min = 10,
@@ -309,7 +257,7 @@ AutomatedTab:AddSlider({
     end
 })
 
--- Collect Coins
+-- Collect Coins Toggle
 AutomatedTab:AddToggle({
     Name = "Collect Coins",
     Default = CollectCoinsEnabled,
@@ -319,7 +267,7 @@ AutomatedTab:AddToggle({
     end
 })
 
--- Auto Pass Bomb
+-- Auto Pass Bomb Toggle
 AutomatedTab:AddToggle({
     Name = "Auto Pass Bomb",
     Default = AutoPassEnabled,
@@ -329,7 +277,7 @@ AutomatedTab:AddToggle({
     end
 })
 
--- Random / Preferred Passing Toggle
+-- Use Random Passing Toggle
 AutomatedTab:AddToggle({
     Name = "Use Random Passing",
     Default = UseRandomPassing,
@@ -339,55 +287,49 @@ AutomatedTab:AddToggle({
     end
 })
 
--- Dropdown for Preferred Targets
-local function updatePreferredTargetsDropdown()
-    local options = {}
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            table.insert(options, player.Name)
-        end
-    end
-    
-    PreferredTargetsDropdown:Refresh(options, true)
-end
-
-local PreferredTargetsDropdown = AutomatedTab:AddDropdown({
-    Name = "Preferred Targets",
-    Default = "",
-    Options = {},
-    Callback = function(selected)
-        PreferredTargets = {selected}
-        logMessage("PreferredTargets set to " .. selected)
-    end
-})
-
--- Update the Preferred Targets dropdown whenever players join or leave
-Players.PlayerAdded:Connect(updatePreferredTargetsDropdown)
-Players.PlayerRemoving:Connect(updatePreferredTargetsDropdown)
-
--- Initial population of the dropdown
-updatePreferredTargetsDropdown()
-
 --========================--
 --       OTHERS TAB       --
 --========================--
 
 local OtherTab = Window:MakeTab({
     Name = "Others",
-    Icon = "rbxassetid://4483345998",
+    Icon = "rbxassetid://4483345998", -- Replace with your desired icon ID
     PremiumOnly = false
 })
 
--- Secure Spin
+-- Secure Spin Toggle
 OtherTab:AddToggle({
     Name = "Secure Spin",
     Default = SecureSpinEnabled,
     Callback = function(bool)
         SecureSpinEnabled = bool
         logMessage("SecureSpinEnabled set to " .. tostring(bool))
+
+        local player = LocalPlayer
+        local char = player.Character or player.CharacterAdded:Wait()
+
+        if SecureSpinEnabled then
+            spawn(function()
+                while SecureSpinEnabled do
+                    for _, part in pairs(char:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0.3, 0.5)
+                        end
+                    end
+                    wait(0.1)
+                end
+            end)
+        else
+            for _, part in pairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.3, 0.5)
+                end
+            end
+        end
     end
 })
 
+-- Secure Spin Distance Slider
 OtherTab:AddSlider({
     Name = "Secure Spin Distance",
     Min = 1,
@@ -402,7 +344,7 @@ OtherTab:AddSlider({
     end
 })
 
--- Anti Slippery
+-- Anti Slippery Toggle
 OtherTab:AddToggle({
     Name = "Anti Slippery",
     Default = false,
@@ -434,7 +376,7 @@ OtherTab:AddToggle({
     end
 })
 
--- Remove Hitbox
+-- Remove Hitbox Toggle
 OtherTab:AddToggle({
     Name = "Remove Hitbox",
     Default = false,
@@ -450,7 +392,11 @@ OtherTab:AddToggle({
                 for _ = 1, 100 do
                     wait()
                     pcall(function()
-                        character:WaitForChild("CollisionPart"):Destroy()
+                        local collisionPart = character:FindFirstChild("CollisionPart")
+                        if collisionPart then
+                            collisionPart:Destroy()
+                            logMessage("CollisionPart destroyed for " .. character.Name)
+                        end
                     end)
                 end
             end
@@ -497,17 +443,22 @@ local function moveToTarget(targetPosition)
         return
     end
 
+    -- Iterate through all waypoints and move the humanoid
     for _, waypoint in ipairs(path:GetWaypoints()) do
         if CollectCoinsEnabled or AutoDodgePlayersEnabled then
             humanoid:MoveTo(waypoint.Position)
-            humanoid.MoveToFinished:Wait()
+            local reached = humanoid.MoveToFinished:Wait()
+            if not reached then
+                logMessage("Failed to reach waypoint: " .. tostring(waypoint.Position))
+                return
+            end
         else
             break
         end
     end
 end
 
--- Dodge players with the bomb
+-- Dodge players carrying the bomb
 local function dodgePlayers()
     local char = LocalPlayer.Character
     if not char or not char:FindFirstChild("HumanoidRootPart") then return end
@@ -526,7 +477,7 @@ local function dodgePlayers()
     end
 
     if closestPlayer then
-        -- Move in the opposite direction
+        -- Calculate direction to move away from the player
         local dodgeDirection = (char.HumanoidRootPart.Position - closestPlayer.Character.HumanoidRootPart.Position).unit
         local targetPosition = char.HumanoidRootPart.Position + dodgeDirection * PlayerDodgeDistance
         if isWithinSafeArea(targetPosition) then
@@ -536,65 +487,90 @@ local function dodgePlayers()
     end
 end
 
--- Collect coins
-    local function collectCoins()
-        local char = LocalPlayer.Character
-        if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+-- Improved Auto-Collect Coins Function
+local function collectCoins()
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then
+        logMessage("Character or HumanoidRootPart not found; cannot collect coins.")
+        return
+    end
 
-        local closestCoin = nil
-        local closestDistance = math.huge
+    local humanoid = char:FindFirstChild("Humanoid")
+    if not humanoid then
+        logMessage("Humanoid not found; cannot move to coins.")
+        return
+    end
 
-        for _, coin in pairs(workspace:GetChildren()) do
-            if coin:IsA("Part") and coin.Name == "Coin" then
-                local distance = (char.HumanoidRootPart.Position - coin.Position).magnitude
-                if distance < closestDistance and isWithinSafeArea(coin.Position) then
+    local closestCoin = nil
+    local closestDistance = math.huge
+    local rootPos = char.HumanoidRootPart.Position
+
+    -- Search for coins using GetDescendants to include nested objects
+    for _, item in pairs(workspace:GetDescendants()) do
+        -- Adjust the part types as needed
+        if (item:IsA("Part") or item:IsA("MeshPart") or item:IsA("UnionOperation")) and item.Name == "Coin" then
+            -- Optional: Use CollectionService tags for efficiency
+            -- if not CollectionService:HasTag(item, "Coin") then continue end
+
+            -- Check if the coin is within the Safe Area
+            if isWithinSafeArea(item.Position) then
+                local distance = (rootPos - item.Position).magnitude
+                -- Find the closest coin
+                if distance < closestDistance then
                     closestDistance = distance
-                    closestCoin = coin
+                    closestCoin = item
                 end
             end
         end
-
-        if closestCoin then
-            moveToTarget(closestCoin.Position)
-            logMessage("Moved to collect coin at distance: " .. math.floor(closestDistance))
-        end
     end
 
-    --========================--
-    --       MAIN LOOP        --
-    --========================--
+    if closestCoin then
+        logMessage(string.format("Closest coin found '%s' at distance: %d studs", closestCoin.Name, math.floor(closestDistance)))
 
-    RunService.Stepped:Connect(function()
-        -- Update Bomb Timer every frame
-        updateBombTimer()
+        -- Move to the coin's position using Pathfinding
+        moveToTarget(closestCoin.Position)
 
-        if Character and Character:FindFirstChild("HumanoidRootPart") then
-            -- Auto Dodge
-            if AutoDodgePlayersEnabled then
-                pcall(dodgePlayers)
-            end
+        -- Optional: Wait briefly to ensure collision scripts register the collection
+        wait(0.3)
+        logMessage("Attempted to collect the coin.")
+    else
+        -- If no coin was found, log a message or do nothing
+        logMessage("No coins found within the Safe Area.")
+    end
+end
 
-            -- Collect Coins
-            if CollectCoinsEnabled then
-                pcall(collectCoins)
-            end
+--========================--
+--       MAIN LOOP        --
+--========================--
 
-            -- Auto Pass Bomb
-            if AutoPassEnabled then
-                pcall(passBombIfNeeded)
-            end
+RunService.Stepped:Connect(function()
+    if Character and Character:FindFirstChild("HumanoidRootPart") then
+        -- Auto Dodge
+        if AutoDodgePlayersEnabled then
+            pcall(dodgePlayers)
         end
-    end)
 
-    --========================--
-    --   TOGGLE MENU BUTTON   --
-    --========================--
+        -- Collect Coins
+        if CollectCoinsEnabled then
+            pcall(collectCoins)
+        end
 
-    Toggle.MouseButton1Click:Connect(function()
-        ScreenGui.Enabled = not ScreenGui.Enabled
-        logMessage("Menu toggled - Now: " .. (ScreenGui.Enabled and "Visible" or "Hidden"))
-    end)
+        -- Auto Pass Bomb
+        if AutoPassEnabled then
+            pcall(passBombIfNeeded)
+        end
+    end
+end)
 
-    -- Initialize OrionLib UI
-    OrionLib:Init()
-    logMessage("Yon Menu Initialized Successfully")
+--========================--
+--   TOGGLE MENU BUTTON   --
+--========================--
+
+Toggle.MouseButton1Click:Connect(function()
+    ScreenGui.Enabled = not ScreenGui.Enabled
+    logMessage("Menu toggled - Now: " .. (ScreenGui.Enabled and "Visible" or "Hidden"))
+end)
+
+-- Initialize OrionLib UI
+OrionLib:Init()
+logMessage("Yon Menu Initialized Successfully")
