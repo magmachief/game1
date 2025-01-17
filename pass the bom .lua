@@ -2,11 +2,9 @@
     Ultimate "Pass the Bomb" Script
     ====================================
     Features:
-    1. Enhanced Auto Pass Bomb logic with optional randomization and preferred targets.
-    2. Advanced Auto Dodge mechanism.
-    3. Comprehensive UI with OrionLib.
-    4. Detailed logs and console for debugging.
-    5. Modular and optimized code structure.
+    1. Enhanced Auto Pass Bomb logic with nearest player targeting.
+    2. Comprehensive UI with OrionLib.
+    3. Detailed logs and console for debugging.
 --]]
 
 --========================--
@@ -56,10 +54,7 @@ local Window = OrionLib:MakeWindow({
 --   GLOBAL VARIABLES     --
 --========================--
 
-local AutoDodgePlayersEnabled = true
-local PlayerDodgeDistance = 15
 local AutoPassEnabled = true
-local UseRandomPassing = false
 local PreferredTargets = {"PlayerName1"}  -- Replace with player names you want to prioritize
 
 local PathfindingService = game:GetService("PathfindingService")
@@ -100,37 +95,27 @@ refreshLogDisplay()
 --   AUTO PASS BOMB LOGIC --
 --========================--
 
-local function getValidPlayers(bombTimeLeft)
+local function getNearestPlayer()
     local char = LocalPlayer.Character
     if not char or not char:FindFirstChild("HumanoidRootPart") then
-        return {}, {}
+        return nil
     end
 
-    local validPreferred = {}
-    local fallbackList = {}
+    local nearestPlayer
+    local shortestDistance = math.huge
     local localPos = char.HumanoidRootPart.Position
 
     for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
-            local character = player.Character
-            if character and character:FindFirstChild("HumanoidRootPart") and not character:FindFirstChild("Bomb") then
-                local dist = (localPos - character.HumanoidRootPart.Position).magnitude
-                if dist <= 25 then
-                    if bombTimeLeft > 5 then
-                        if table.find(PreferredTargets, player.Name) then
-                            table.insert(validPreferred, player)
-                        else
-                            table.insert(fallbackList, player)
-                        end
-                    else
-                        table.insert(fallbackList, player)
-                    end
-                end
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and not player.Character:FindFirstChild("Bomb") then
+            local distance = (localPos - player.Character.HumanoidRootPart.Position).magnitude
+            if distance < shortestDistance then
+                shortestDistance = distance
+                nearestPlayer = player
             end
         end
     end
 
-    return validPreferred, fallbackList
+    return nearestPlayer
 end
 
 local function passBombIfNeeded()
@@ -140,41 +125,14 @@ local function passBombIfNeeded()
     local bomb = char:FindFirstChild("Bomb")
     if not bomb then return end
 
-    local bombTimeValue = bomb:FindFirstChild("BombTimeLeft")
-    local bombTimeLeft = bombTimeValue and bombTimeValue.Value or 9999
-
     local BombEvent = bomb:FindFirstChild("RemoteEvent")
     if not BombEvent then return end
 
-    local validPreferred, fallbackList = getValidPlayers(bombTimeLeft)
+    local nearestPlayer = getNearestPlayer()
 
-    if #validPreferred > 0 then
-        local chosen
-        if UseRandomPassing then
-            chosen = validPreferred[math.random(#validPreferred)]
-        else
-            chosen = validPreferred[1]
-        end
-
-        if chosen.Character and chosen.Character:FindFirstChild("CollisionPart") then
-            BombEvent:FireServer(chosen.Character, chosen.Character.CollisionPart)
-            logMessage("Bomb passed to preferred target: " .. chosen.Name)
-            return
-        end
-    end
-
-    if #fallbackList > 0 then
-        local fallback
-        if UseRandomPassing then
-            fallback = fallbackList[math.random(#fallbackList)]
-        else
-            fallback = fallbackList[1]
-        end
-
-        if fallback.Character and fallback.Character:FindFirstChild("CollisionPart") then
-            BombEvent:FireServer(fallback.Character, fallback.Character.CollisionPart)
-            logMessage("Bomb passed to fallback: " .. fallback.Name)
-        end
+    if nearestPlayer and nearestPlayer.Character and nearestPlayer.Character:FindFirstChild("CollisionPart") then
+        BombEvent:FireServer(nearestPlayer.Character, nearestPlayer.Character.CollisionPart)
+        logMessage("Bomb passed to nearest player: " .. nearestPlayer.Name)
     end
 end
 
@@ -182,6 +140,7 @@ end
 --    AUTO DODGE LOGIC    --
 --========================--
 
+--[[
 local function autoDodgePlayers()
     if not AutoDodgePlayersEnabled then return end
 
@@ -222,6 +181,7 @@ local function autoDodgePlayers()
         logMessage("Dodged player with bomb: " .. closestPlayer.Name)
     end
 end
+]]
 
 --========================--
 --       AUTOMATED TAB    --
@@ -234,43 +194,11 @@ local AutomatedTab = Window:MakeTab({
 })
 
 AutomatedTab:AddToggle({
-    Name = "Auto Dodge Players",
-    Default = AutoDodgePlayersEnabled,
-    Callback = function(bool)
-        AutoDodgePlayersEnabled = bool
-        logMessage("AutoDodgePlayersEnabled set to " .. tostring(bool))
-    end
-})
-
-AutomatedTab:AddSlider({
-    Name = "Player Dodge Distance",
-    Min = 10,
-    Max = 50,
-    Default = 15,
-    Color = Color3.fromRGB(255, 0, 0),
-    Increment = 1,
-    ValueName = "studs",
-    Callback = function(value)
-        PlayerDodgeDistance = value
-        logMessage("PlayerDodgeDistance set to " .. tostring(value))
-    end
-})
-
-AutomatedTab:AddToggle({
     Name = "Auto Pass Bomb",
     Default = AutoPassEnabled,
     Callback = function(bool)
         AutoPassEnabled = bool
         logMessage("AutoPassEnabled set to " .. tostring(bool))
-    end
-})
-
-AutomatedTab:AddToggle({
-    Name = "Use Random Passing",
-    Default = UseRandomPassing,
-    Callback = function(bool)
-        UseRandomPassing = bool
-        logMessage("UseRandomPassing set to " .. tostring(bool))
     end
 })
 
@@ -398,9 +326,12 @@ RunService.Heartbeat:Connect(function()
         passBombIfNeeded()
     end
 
+    -- Commented out Auto Dodge Players
+    --[[
     if AutoDodgePlayersEnabled then
         autoDodgePlayers()
     end
+    ]]
 end)
 
 --========================--
