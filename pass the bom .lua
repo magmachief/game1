@@ -84,8 +84,10 @@ local function refreshLogDisplay()
 end
 
 local function logMessage(msg)
-    table.insert(logs, "[" .. os.date("%X") .. "] " .. tostring(msg))
-    refreshLogDisplay()
+    if #logs == 0 or logs[#logs] ~= msg then  -- Avoid spamming the same message
+        table.insert(logs, "[" .. os.date("%X") .. "] " .. tostring(msg))
+        refreshLogDisplay()
+    end
 end
 
 logDisplay = ConsoleTab:AddParagraph("Execution Logs", "")
@@ -118,6 +120,42 @@ local function getNearestPlayer()
     return nearestPlayer
 end
 
+local function moveToTarget(targetPosition, callback)
+    local char = LocalPlayer.Character
+    if not char then return end
+    
+    local humanoid = char:FindFirstChild("Humanoid")
+    if not humanoid then return end
+
+    local path = PathfindingService:CreatePath({
+        AgentRadius = 2,
+        AgentHeight = 5,
+        AgentCanJump = true,
+        AgentMaxSlope = 45,
+    })
+
+    path:ComputeAsync(char.HumanoidRootPart.Position, targetPosition)
+    local waypoints = path:GetWaypoints()
+    
+    local function moveToWaypoints(index)
+        if index > #waypoints then
+            if callback then callback() end
+            return
+        end
+        
+        humanoid:MoveTo(waypoints[index].Position)
+        humanoid.MoveToFinished:Connect(function(reached)
+            if reached then
+                moveToWaypoints(index + 1)
+            else
+                if callback then callback() end
+            end
+        end)
+    end
+    
+    moveToWaypoints(1)
+end
+
 local function passBombIfNeeded()
     local char = LocalPlayer.Character
     if not char then return end
@@ -129,59 +167,13 @@ local function passBombIfNeeded()
     if not BombEvent then return end
 
     local nearestPlayer = getNearestPlayer()
-
     if nearestPlayer and nearestPlayer.Character and nearestPlayer.Character:FindFirstChild("CollisionPart") then
-        BombEvent:FireServer(nearestPlayer.Character, nearestPlayer.Character.CollisionPart)
-        logMessage("Bomb passed to nearest player: " .. nearestPlayer.Name)
+        moveToTarget(nearestPlayer.Character.HumanoidRootPart.Position, function()
+            BombEvent:FireServer(nearestPlayer.Character, nearestPlayer.Character.CollisionPart)
+            logMessage("Bomb passed to nearest player: " .. nearestPlayer.Name)
+        end)
     end
 end
-
---========================--
---    AUTO DODGE LOGIC    --
---========================--
-
---[[
-local function autoDodgePlayers()
-    if not AutoDodgePlayersEnabled then return end
-
-    local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-
-    local closestPlayer = nil
-    local closestDistance = math.huge
-
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Bomb") then
-            local distance = (char.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).magnitude
-            if distance < closestDistance and distance <= PlayerDodgeDistance then
-                closestDistance = distance
-                closestPlayer = player
-            end
-        end
-    end
-
-    if closestPlayer then
-        local dodgeDirection = (char.HumanoidRootPart.Position - closestPlayer.Character.HumanoidRootPart.Position).unit
-        local targetPosition = char.HumanoidRootPart.Position + dodgeDirection * PlayerDodgeDistance
-        local path = PathfindingService:CreatePath({
-            AgentRadius = 2,
-            AgentHeight = 5,
-            AgentCanJump = true,
-            AgentMaxSlope = 45,
-        })
-
-        path:ComputeAsync(char.HumanoidRootPart.Position, targetPosition)
-
-        local waypoints = path:GetWaypoints()
-        for _, waypoint in ipairs(waypoints) do
-            char.Humanoid:MoveTo(waypoint.Position)
-            char.Humanoid.MoveToFinished:Wait()
-        end
-
-        logMessage("Dodged player with bomb: " .. closestPlayer.Name)
-    end
-end
-]]
 
 --========================--
 --       AUTOMATED TAB    --
@@ -325,13 +317,6 @@ RunService.Heartbeat:Connect(function()
     if AutoPassEnabled then
         passBombIfNeeded()
     end
-
-    -- Commented out Auto Dodge Players
-    --[[
-    if AutoDodgePlayersEnabled then
-        autoDodgePlayers()
-    end
-    ]]
 end)
 
 --========================--
