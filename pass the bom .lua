@@ -2,13 +2,9 @@
     Pass the Bomb - Revised Example
     ====================================
     Key Fixes/Changes:
-    1) Coin Collector:
-       - Logs only once when a new coin is found (prevents console spam).
-       - Improved pathfinding so it doesn’t “drag” the character.
-    2) Auto Pass Bomb:
+    1) Auto Pass Bomb:
        - Continuously checks if you have the bomb and passes it to a valid target.
-    3) Bomb Timer:
-       - Correctly retrieves BombTimeLeft and updates the display (no longer "N/A").
+    2) Removed Bomb Timer and Collect Coins related code.
 --]]
 
 --========================--
@@ -28,15 +24,8 @@ local BombPassRange = 25
 local ShortFuseThreshold = 5  -- If bomb timer < 5, pass to any valid target
 local UseRandomPassing = false
 
-local CollectCoinsEnabled = true
 local PlayerDodgeDistance = 15
 local AutoDodgePlayersEnabled = true
-
--- For coin logging
-local coinLogTable = {}  -- Table to track which coins were logged
-
--- For bomb timer UI
-local playerBombTimers = {}
 
 --========================--
 --     HELPER FUNCTIONS   --
@@ -82,79 +71,6 @@ local function moveToTarget(destination)
 end
 
 --========================--
---    BOMB TIMER LOGIC    --
---========================--
-
--- Updates the TextLabel with the current bomb time
-local function updatePlayerBombTimer(player, timeValue)
-    local timerLabel = playerBombTimers[player]
-    if timerLabel then
-        if typeof(timeValue) == "number" then
-            timerLabel.Text = string.format("Bomb Timer: %ds", math.floor(timeValue))
-        else
-            timerLabel.Text = "Bomb Timer: N/A"
-        end
-    end
-end
-
--- Removes the billboard GUI for a player
-local function removeBombTimerGui(player)
-    if playerBombTimers[player] then
-        playerBombTimers[player]:Destroy()
-        playerBombTimers[player] = nil
-        logMessage("Removed Bomb Timer for " .. player.Name)
-    end
-end
-
--- Creates a billboard GUI over the player's head if they have a bomb
-local function createBombTimerGui(player)
-    local character = player.Character
-    if not (character and character:FindFirstChild("Head")) then
-        return
-    end
-    local bomb = character:FindFirstChild("Bomb")
-    if not bomb then
-        return
-    end
-    
-    -- Billboard
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "BombTimerGui"
-    billboard.Parent = character.Head
-    billboard.Adornee = character.Head
-    billboard.Size = UDim2.new(0, 100, 0, 50)
-    billboard.StudsOffset = Vector3.new(0, 2, 0)
-    billboard.AlwaysOnTop = true
-    
-    -- Label
-    local timerLabel = Instance.new("TextLabel")
-    timerLabel.Parent = billboard
-    timerLabel.Size = UDim2.new(1, 0, 1, 0)
-    timerLabel.BackgroundTransparency = 1
-    timerLabel.Font = Enum.Font.SourceSansBold
-    timerLabel.Text = "Bomb Timer: N/A"
-    timerLabel.TextColor3 = Color3.new(1, 0, 0) -- Red
-    timerLabel.TextScaled = true
-    
-    playerBombTimers[player] = timerLabel
-    
-    -- Listen for changes in bomb's timer
-    local bombTimeValue = bomb:FindFirstChild("BombTimeLeft")
-    if bombTimeValue then
-        -- Immediate display
-        updatePlayerBombTimer(player, bombTimeValue.Value)
-        
-        bombTimeValue.Changed:Connect(function(newValue)
-            updatePlayerBombTimer(player, newValue)
-            if newValue <= 0 then
-                removeBombTimerGui(player)
-                logMessage("Bomb Exploded for " .. player.Name)
-            end
-        end)
-    end
-end
-
---========================--
 --    PLAYER CONNECTIONS  --
 --========================--
 
@@ -163,14 +79,12 @@ local function onCharacterAdded(player, character)
     character.ChildAdded:Connect(function(child)
         if child.Name == "Bomb" then
             task.wait(0.3)
-            createBombTimerGui(player)
             logMessage(player.Name .. " obtained the bomb!")
         end
     end)
     
     character.ChildRemoved:Connect(function(child)
         if child.Name == "Bomb" then
-            removeBombTimerGui(player)
             logMessage(player.Name .. " no longer has the bomb!")
         end
     end)
@@ -189,14 +103,11 @@ for _, p in pairs(Players:GetPlayers()) do
     if p.Character then
         onCharacterAdded(p, p.Character)
         if p.Character:FindFirstChild("Bomb") then
-            createBombTimerGui(p)
+            logMessage(p.Name .. " already has the bomb!")
         end
     end
 end
 Players.PlayerAdded:Connect(onPlayerAdded)
-Players.PlayerRemoving:Connect(function(p)
-    removeBombTimerGui(p)
-end)
 
 --========================--
 --   AUTO PASS THE BOMB   --
@@ -254,45 +165,6 @@ local function autoPassBomb()
 end
 
 --========================--
---      COIN COLLECTOR    --
---========================--
-
-local function collectCoins()
-    if not CollectCoinsEnabled then return end
-    
-    local char = LocalPlayer.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-    
-    local closestCoin
-    local closestDist = math.huge
-    
-    -- Search for coins
-    for _, item in pairs(workspace:GetDescendants()) do
-        if (item:IsA("Part") or item:IsA("MeshPart") or item:IsA("UnionOperation")) and item.Name == "Coin" then
-            local distance = (root.Position - item.Position).Magnitude
-            if distance < closestDist then
-                closestDist = distance
-                closestCoin = item
-            end
-        end
-    end
-    
-    if closestCoin then
-        -- Log the coin once if we haven't seen it before
-        if not coinLogTable[closestCoin] then
-            coinLogTable[closestCoin] = true
-            logMessage("Found a coin: " .. closestCoin.Name .. " at distance: " .. math.floor(closestDist))
-        end
-        
-        -- Move to the coin
-        moveToTarget(closestCoin.Position)
-        -- Brief pause to allow pickup
-        task.wait(0.25)
-    end
-end
-
---========================--
 --   AUTO DODGE (OPTION)  --
 --========================--
 
@@ -328,9 +200,6 @@ end
 RunService.Heartbeat:Connect(function()
     -- Continuously check for bomb passing
     autoPassBomb()
-    
-    -- Find & collect coins
-    collectCoins()
     
     -- Dodge bomb carriers
     autoDodgePlayers()
