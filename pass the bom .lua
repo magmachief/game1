@@ -200,6 +200,8 @@ local function getValidPlayers(bombTimeLeft)
     return validPreferred, fallbackList
 end
 
+local isSpinning = false -- A flag to manage spinning state
+
 local function passBombIfNeeded()
     local char = LocalPlayer.Character
     if not char then return end
@@ -207,44 +209,68 @@ local function passBombIfNeeded()
     local bomb = char:FindFirstChild("Bomb")
     if not bomb then return end
 
-    local bombTimeValue = bomb:FindFirstChild("BombTimeLeft")
-    local bombTimeLeft = bombTimeValue and bombTimeValue.Value or 9999
-
-    -- If the bomb is about to explode, pass as soon as possible
+    -- Bomb RemoteEvent
     local BombEvent = bomb:FindFirstChild("RemoteEvent")
     if not BombEvent then return end
 
-    local validPreferred, fallbackList = getValidPlayers(bombTimeLeft)
+    local validPreferred, fallbackList = getValidPlayers()
+    local target = nil
 
-    -- If we have valid preferred targets and time left
+    -- Decide target based on preference or fallback
     if #validPreferred > 0 then
-        local chosen
         if UseRandomPassing then
-            chosen = validPreferred[math.random(#validPreferred)]
+            target = validPreferred[math.random(#validPreferred)]
         else
-            chosen = validPreferred[1]
+            target = validPreferred[1]
         end
-
-        if chosen.Character and chosen.Character:FindFirstChild("CollisionPart") then
-            BombEvent:FireServer(chosen.Character, chosen.Character.CollisionPart)
-            logMessage("Bomb passed to preferred target: " .. chosen.Name)
-            return
+    elseif #fallbackList > 0 then
+        if UseRandomPassing then
+            target = fallbackList[math.random(#fallbackList)]
+        else
+            target = fallbackList[1]
         end
     end
 
-    -- Otherwise, pass to fallback
-    if #fallbackList > 0 then
-        local fallback
-        if UseRandomPassing then
-            fallback = fallbackList[math.random(#fallbackList)]
-        else
-            fallback = fallbackList[1]
-        end
+    -- Spin logic: Spin only if a target is nearby and the bomb is held
+    local function startSpinning()
+        if isSpinning then return end -- Prevent multiple spin loops
+        isSpinning = true
+        spawn(function()
+            while isSpinning and char and bomb and target do
+                local humanoidRootPart = char:FindFirstChild("HumanoidRootPart")
+                local targetPart = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+                if humanoidRootPart and targetPart then
+                    -- Slightly adjust the facing direction towards the target while allowing movement
+                    local lookVector = (targetPart.Position - humanoidRootPart.Position).unit
+                    humanoidRootPart.CFrame = humanoidRootPart.CFrame:Lerp(
+                        CFrame.lookAt(humanoidRootPart.Position, humanoidRootPart.Position + lookVector),
+                        0.2 -- Adjust this value for smoother or quicker turning
+                    )
+                    -- Add a spin for effect
+                    humanoidRootPart.CFrame *= CFrame.Angles(0, math.rad(10), 0) -- Adjust spin speed here
+                end
+                wait(0.05) -- Frequency of the spin
+            end
+        end)
+    end
 
-        if fallback.Character and fallback.Character:FindFirstChild("CollisionPart") then
-            BombEvent:FireServer(fallback.Character, fallback.Character.CollisionPart)
-            logMessage("Bomb passed to fallback: " .. fallback.Name)
-        end
+    -- Stop spinning function
+    local function stopSpinning()
+        isSpinning = false -- This will stop the spin loop
+    end
+
+    -- Pass the bomb if a valid target is found
+    if target and target.Character and target.Character:FindFirstChild("CollisionPart") then
+        startSpinning() -- Start spinning when near a valid target and bomb is held
+
+        -- Fire the server event to pass the bomb
+        BombEvent:FireServer(target.Character, target.Character.CollisionPart)
+        logMessage("Bomb passed to: " .. target.Name)
+
+        stopSpinning() -- Stop spinning after passing the bomb
+    else
+        logMessage("No valid target found to pass the bomb.")
+        stopSpinning() -- Ensure spinning stops if no valid target is found
     end
 end
 
