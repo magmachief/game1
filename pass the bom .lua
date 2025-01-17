@@ -83,7 +83,7 @@ local ConsoleTab = Window:MakeTab({
     PremiumOnly = false
 })
 
-local logDisplay
+local logDisplay = nil
 
 local function refreshLogDisplay()
     if logDisplay then
@@ -107,6 +107,7 @@ refreshLogDisplay()
 local function getNearestPlayer()
     local char = LocalPlayer.Character
     if not char or not char:FindFirstChild("HumanoidRootPart") then
+        logMessage("Character or HumanoidRootPart not found")
         return nil
     end
 
@@ -124,6 +125,12 @@ local function getNearestPlayer()
         end
     end
 
+    if nearestPlayer then
+        logMessage("Nearest player found: " .. nearestPlayer.Name)
+    else
+        logMessage("No nearest player found")
+    end
+
     return nearestPlayer
 end
 
@@ -132,7 +139,10 @@ local function moveToTarget(targetPosition, callback)
     if not char then return end
     
     local humanoid = char:FindFirstChild("Humanoid")
-    if not humanoid then return end
+    if not humanoid then
+        logMessage("Humanoid not found")
+        return
+    end
 
     local path = PathfindingService:CreatePath({
         AgentRadius = 2,
@@ -144,6 +154,12 @@ local function moveToTarget(targetPosition, callback)
     path:ComputeAsync(char.HumanoidRootPart.Position, targetPosition)
     local waypoints = path:GetWaypoints()
     
+    if #waypoints == 0 then
+        logMessage("No waypoints found for path")
+        return
+    end
+
+    logMessage("Moving to target position")
     local function moveToWaypoints(index)
         if index > #waypoints then
             if callback then callback() end
@@ -180,9 +196,12 @@ local function passBombIfNeeded()
     if TargetPlayer and TargetPlayer.Character and TargetPlayer.Character:FindFirstChild("CollisionPart") then
         moveToTarget(TargetPlayer.Character.HumanoidRootPart.Position, function()
             BombEvent:FireServer(TargetPlayer.Character, TargetPlayer.Character.CollisionPart)
+            logMessage("Bomb passed to: " .. TargetPlayer.Name)
             TargetPlayer = nil  -- Reset the target player after passing the bomb
             stopSpinning()  -- Stop spinning after passing the bomb
         end)
+    else
+        logMessage("No valid target found for passing the bomb")
     end
 end
 
@@ -219,6 +238,7 @@ local function spinCharacter()
 
     while spinning do
         rootPart.CFrame = rootPart.CFrame * CFrame.Angles(0, math.rad(SPIN_SPEED * RunService.Heartbeat:Wait()), 0)
+        RunService.Heartbeat:Wait() -- Ensure there's a wait in the loop to prevent freezing
     end
 end
 
@@ -240,7 +260,7 @@ local function onCharacterAdded(character)
             end
             -- Keep passing the bomb while spinning
             while child.Parent == character do
-                handleBomb()
+                passBombIfNeeded()
                 wait(0.1) -- Control loop frequency to avoid lag
             end
             stopSpinning() -- Stop spinning once the bomb is gone
@@ -264,7 +284,7 @@ end
 RunService.Heartbeat:Connect(function()
     if AutoPassEnabled then
         -- Continuously validate bomb passing logic for better responsiveness
-        pcall(handleBomb)
+        pcall(passBombIfNeeded)
     end
 end)
 
