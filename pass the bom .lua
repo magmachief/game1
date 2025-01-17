@@ -66,6 +66,15 @@ local LocalPlayer = Players.LocalPlayer
 local logs = {}
 
 --========================--
+--   PERFORMANCE SETTINGS --
+--========================--
+
+local SPIN_RADIUS = 10 -- Radius to detect enemies for spinning
+local SPIN_SPEED = 360 -- Rotation speed in degrees per second
+local spinning = false -- Flag to control spinning
+local AutoPassEnabled = true -- Ensure autopass works when enabled
+
+--========================--
 --       CONSOLE TAB      --
 --========================--
 
@@ -177,14 +186,87 @@ local function passBombIfNeeded()
     end
 end
 
+--========================--
+--       SPIN LOGIC       --
+--========================--
+
+local function areEnemiesNearby()
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then
+        return false
+    end
+
+    local localPos = char.HumanoidRootPart.Position
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and not player.Character:FindFirstChild("Bomb") then
+            local distance = (localPos - player.Character.HumanoidRootPart.Position).magnitude
+            if distance <= SPIN_RADIUS then
+                return true
+            end
+        end
+    end
+
+    return false
+end
+
+local function spinCharacter()
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+
+    local rootPart = char.HumanoidRootPart
+    spinning = true
+
+    while spinning do
+        rootPart.CFrame = rootPart.CFrame * CFrame.Angles(0, math.rad(SPIN_SPEED * RunService.Heartbeat:Wait()), 0)
+    end
+end
+
+local function stopSpinning()
+    spinning = false
+end
+
+--========================--
+--      EVENT HANDLERS    --
+--========================--
+
 local function onCharacterAdded(character)
     character.ChildAdded:Connect(function(child)
+        -- Trigger auto-pass logic and spin when the bomb is added
         if child.Name == "Bomb" and AutoPassEnabled then
-            TargetPlayer = getNearestPlayer()  -- Select a target when the player receives the bomb
-            passBombIfNeeded()  -- Attempt to pass the bomb immediately
+            -- Start spinning if enemies are nearby
+            if areEnemiesNearby() and not spinning then
+                spinCharacter()
+            end
+            -- Keep passing the bomb while spinning
+            while child.Parent == character do
+                handleBomb()
+                wait(0.1) -- Control loop frequency to avoid lag
+            end
+            stopSpinning() -- Stop spinning once the bomb is gone
         end
     end)
 end
+
+--========================--
+--    INITIALIZATION      --
+--========================--
+
+LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
+if LocalPlayer.Character then
+    onCharacterAdded(LocalPlayer.Character)
+end
+
+--========================--
+--  GAME LOOP (Optional)  --
+--========================--
+
+RunService.Heartbeat:Connect(function()
+    if AutoPassEnabled then
+        -- Continuously validate bomb passing logic for better responsiveness
+        pcall(handleBomb)
+    end
+end)
 
 --========================--
 --       AUTOMATED TAB    --
