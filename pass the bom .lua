@@ -1,10 +1,12 @@
 --[[
-    Full "Pass the Bomb" script with new features:
-    1. Enhanced Auto Pass Bomb logic with optional randomization and preferred targets
-    2. Bomb Timer display
-    3. Updates Log in the menu
-    4. Console tab to show execution logs
-    5. Retains original functionalities (Auto Dodge, Collect Coins, etc.)
+    Full "Pass the Bomb" Script with Enhanced Features:
+    1. Enhanced Auto Pass Bomb logic with optional randomization and preferred targets.
+    2. Bomb Timer display above each player's name.
+    3. Updates Log in the menu.
+    4. Console tab to show execution logs.
+    5. Retains original functionalities (Auto Dodge, Collect Coins, etc.).
+    
+    This script utilizes BillboardGui to display bomb timers above player names without obstructing the main screen view.
 --]]
 
 --========================--
@@ -21,13 +23,13 @@ ScreenGui.ResetOnSpawn = false
 local Toggle = Instance.new("ImageButton")
 Toggle.Name = "Toggle"
 Toggle.Parent = ScreenGui
-Toggle.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-Toggle.Position = UDim2.new(0, 50, 0, 50)
-Toggle.Size = UDim2.new(0, 60, 0, 60)
-Toggle.Image = "rbxassetid://18594014746"
+Toggle.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Red background
+Toggle.Position = UDim2.new(0.5, -30, 0, 50) -- Positioned near the top center
+Toggle.Size = UDim2.new(0, 60, 0, 60) -- 60x60 pixels
+Toggle.Image = "rbxassetid://18594014746" -- Replace with your desired image asset ID
 Toggle.ScaleType = Enum.ScaleType.Fit
 
--- Make the toggle button circular
+-- Make the Toggle Button Circular
 local Corner = Instance.new("UICorner")
 Corner.CornerRadius = UDim.new(0.5, 0)
 Corner.Parent = Toggle
@@ -46,14 +48,15 @@ local Window = OrionLib:MakeWindow({
     IntroText = "Yon Menu",
     SaveConfig = true,
     ConfigFolder = "YonMenu_Advanced",
-    IntroIcon = "rbxassetid://9876543210",  -- Example icon ID (replace if desired)
-    Icon = "rbxassetid://9876543210",       -- Example icon ID (replace if desired)
+    IntroIcon = "rbxassetid://9876543210",  -- Replace with your desired intro icon ID
+    Icon = "rbxassetid://9876543210",       -- Replace with your desired window icon ID
 })
 
 --========================--
 --   GLOBAL VARIABLES     --
 --========================--
 
+-- Feature Toggles
 local AutoDodgePlayersEnabled = true
 local PlayerDodgeDistance = 15
 local CollectCoinsEnabled = true
@@ -61,23 +64,30 @@ local AntiSlipperyEnabled = false
 local RemoveHitboxEnabled = false
 local AutoPassEnabled = false
 local UseRandomPassing = false            -- Determines whether to pick a random target or first in list
-local PreferredTargets = {"PlayerName1"}  -- List of players you want to target first, if in range
+local PreferredTargets = {"PlayerName1"}  -- Replace with player names you want to prioritize
+
+-- Additional Features
 local SecureSpinEnabled = false
 local SecureSpinDistance = 5
 local DodgeDistance = 10
-local SafeArea = {MinX = -100, MaxX = 100, MinZ = -100, MaxZ = 100}
+local SafeArea = {MinX = -100, MaxX = 100, MinZ = -100, MaxZ = 100} -- Define your game's safe area coordinates
 
--- Bomb passing range and short fuse threshold
+-- Bomb Parameters
 local BombPassRange = 25
 local ShortFuseThreshold = 5
 
--- Services
+-- Roblox Services
 local PathfindingService = game:GetService("PathfindingService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+local CollectionService = game:GetService("CollectionService")
 
+-- Player Character
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+
+-- Table to store player timer GUIs
+local playerBombTimers = {}
 
 --========================--
 --   UPDATE / CHANGELOG   --
@@ -85,16 +95,17 @@ local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 
 local UpdateLogTab = Window:MakeTab({
     Name = "Updates Log",
-    Icon = "rbxassetid://4483345998",
+    Icon = "rbxassetid://4483345998", -- Replace with your desired icon ID
     PremiumOnly = false
 })
 
--- You can list your version notes or updates here
+-- List of version updates or changelogs
 UpdateLogTab:AddParagraph("Changelog", [[
 1. Added random/targeted auto pass logic.
-2. Implemented bomb timer display.
+2. Implemented per-player bomb timer display above names.
 3. Introduced a console tab for execution logs.
 4. Enhanced user interface with OrionLib advanced features.
+5. Improved Auto Collect Coins functionality.
 ]])
 
 --========================--
@@ -103,7 +114,7 @@ UpdateLogTab:AddParagraph("Changelog", [[
 
 local ConsoleTab = Window:MakeTab({
     Name = "Console",
-    Icon = "rbxassetid://4483345998",
+    Icon = "rbxassetid://4483345998", -- Replace with your desired icon ID
     PremiumOnly = false
 })
 
@@ -113,7 +124,7 @@ local logDisplay
 -- Helper function to refresh log display
 local function refreshLogDisplay()
     if logDisplay then
-        -- Rebuild the text from the logs table
+        -- Combine all log messages into a single string separated by newlines
         local combined = table.concat(logs, "\n")
         logDisplay:Set(combined)
     end
@@ -133,30 +144,76 @@ refreshLogDisplay()
 --     BOMB TIMER UI      --
 --========================--
 
-local TimerLabel = Instance.new("TextLabel")
-TimerLabel.Name = "BombTimerLabel"
-TimerLabel.Parent = ScreenGui
-TimerLabel.Size = UDim2.new(0, 200, 0, 50)
-TimerLabel.Position = UDim2.new(0.5, -100, 0, 10)
-TimerLabel.BackgroundTransparency = 0.4
-TimerLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-TimerLabel.TextScaled = true
-TimerLabel.Text = "Bomb Timer: N/A"
+-- Function to create a BillboardGui above a player's head to display the bomb timer
+local function createBombTimerGui(player)
+    -- Ensure the player has a character
+    local character = player.Character
+    if not character or not character:FindFirstChild("Head") then return end
 
--- Updates the bomb timer label if a bomb with 'BombTimeLeft' is found
-local function updateBombTimer()
-    local char = LocalPlayer.Character
-    if not char then
-        TimerLabel.Text = "Bomb Timer: N/A"
-        return
+    -- Create BillboardGui
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "BombTimerGui"
+    billboard.Parent = character.Head
+    billboard.Adornee = character.Head
+    billboard.Size = UDim2.new(0, 100, 0, 50) -- Width: 100, Height: 50
+    billboard.StudsOffset = Vector3.new(0, 2, 0) -- Position above the head
+    billboard.AlwaysOnTop = true
+
+    -- Create TextLabel for the timer
+    local timerLabel = Instance.new("TextLabel")
+    timerLabel.Parent = billboard
+    timerLabel.Size = UDim2.new(1, 0, 1, 0) -- Fill the BillboardGui
+    timerLabel.BackgroundTransparency = 1 -- Transparent background
+    timerLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- White text
+    timerLabel.TextScaled = true
+    timerLabel.Font = Enum.Font.SourceSansBold
+    timerLabel.Text = "Bomb Timer: N/A"
+
+    -- Store the GUI in the table
+    playerBombTimers[player] = timerLabel
+end
+
+-- Function to update the bomb timer for a specific player
+local function updatePlayerBombTimer(player, timeLeft)
+    local timerLabel = playerBombTimers[player]
+    if timerLabel then
+        timerLabel.Text = "Bomb Timer: " .. tostring(timeLeft) .. "s"
     end
-    local Bomb = char:FindFirstChild("Bomb")
-    if Bomb and Bomb:FindFirstChild("BombTimeLeft") then
-        local timeLeft = Bomb.BombTimeLeft.Value
-        TimerLabel.Text = "Bomb Timer: " .. tostring(timeLeft) .. "s"
-    else
-        TimerLabel.Text = "Bomb Timer: N/A"
+end
+
+-- Function to remove the Bomb Timer GUI when a player leaves or respawns
+local function removeBombTimerGui(player)
+    if playerBombTimers[player] then
+        playerBombTimers[player]:Destroy()
+        playerBombTimers[player] = nil
+    end
+end
+
+-- Connect functions to player events
+Players.PlayerAdded:Connect(function(player)
+    -- Wait for the player's character to load
+    player.CharacterAdded:Connect(function(character)
+        -- Create the Bomb Timer GUI for the new character
+        wait(1) -- Small delay to ensure character parts are loaded
+        createBombTimerGui(player)
+    end)
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    -- Remove the Bomb Timer GUI when the player leaves
+    removeBombTimerGui(player)
+end)
+
+-- Initialize Bomb Timers for existing players
+for _, player in pairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer then -- Exclude local player if needed
+        if player.Character then
+            createBombTimerGui(player)
+        end
+        player.CharacterAdded:Connect(function(character)
+            wait(1) -- Small delay to ensure character parts are loaded
+            createBombTimerGui(player)
+        end)
     end
 end
 
@@ -200,6 +257,7 @@ local function getValidPlayers(bombTimeLeft)
     return validPreferred, fallbackList
 end
 
+-- Function to pass the bomb to a chosen player
 local function passBombIfNeeded()
     local char = LocalPlayer.Character
     if not char then return end
@@ -254,11 +312,11 @@ end
 
 local AutomatedTab = Window:MakeTab({
     Name = "Automated",
-    Icon = "rbxassetid://4483345998",
+    Icon = "rbxassetid://4483345998", -- Replace with your desired icon ID
     PremiumOnly = false
 })
 
--- Auto Dodge Players
+-- Auto Dodge Players Toggle
 AutomatedTab:AddToggle({
     Name = "Auto Dodge Players",
     Default = AutoDodgePlayersEnabled,
@@ -268,7 +326,7 @@ AutomatedTab:AddToggle({
     end
 })
 
--- Slider for Distance
+-- Player Dodge Distance Slider
 AutomatedTab:AddSlider({
     Name = "Player Dodge Distance",
     Min = 10,
@@ -283,7 +341,7 @@ AutomatedTab:AddSlider({
     end
 })
 
--- Collect Coins
+-- Collect Coins Toggle
 AutomatedTab:AddToggle({
     Name = "Collect Coins",
     Default = CollectCoinsEnabled,
@@ -293,7 +351,7 @@ AutomatedTab:AddToggle({
     end
 })
 
--- Auto Pass Bomb
+-- Auto Pass Bomb Toggle
 AutomatedTab:AddToggle({
     Name = "Auto Pass Bomb",
     Default = AutoPassEnabled,
@@ -303,7 +361,7 @@ AutomatedTab:AddToggle({
     end
 })
 
--- Random / Preferred Passing Toggle
+-- Use Random Passing Toggle
 AutomatedTab:AddToggle({
     Name = "Use Random Passing",
     Default = UseRandomPassing,
@@ -319,20 +377,43 @@ AutomatedTab:AddToggle({
 
 local OtherTab = Window:MakeTab({
     Name = "Others",
-    Icon = "rbxassetid://4483345998",
+    Icon = "rbxassetid://4483345998", -- Replace with your desired icon ID
     PremiumOnly = false
 })
 
--- Secure Spin
+-- Secure Spin Toggle
 OtherTab:AddToggle({
     Name = "Secure Spin",
     Default = SecureSpinEnabled,
     Callback = function(bool)
         SecureSpinEnabled = bool
         logMessage("SecureSpinEnabled set to " .. tostring(bool))
+
+        local player = LocalPlayer
+        local char = player.Character or player.CharacterAdded:Wait()
+
+        if SecureSpinEnabled then
+            spawn(function()
+                while SecureSpinEnabled do
+                    for _, part in pairs(char:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0.3, 0.5)
+                        end
+                    end
+                    wait(0.1)
+                end
+            end)
+        else
+            for _, part in pairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.3, 0.5)
+                end
+            end
+        end
     end
 })
 
+-- Secure Spin Distance Slider
 OtherTab:AddSlider({
     Name = "Secure Spin Distance",
     Min = 1,
@@ -347,7 +428,7 @@ OtherTab:AddSlider({
     end
 })
 
--- Anti Slippery
+-- Anti Slippery Toggle
 OtherTab:AddToggle({
     Name = "Anti Slippery",
     Default = false,
@@ -379,7 +460,7 @@ OtherTab:AddToggle({
     end
 })
 
--- Remove Hitbox
+-- Remove Hitbox Toggle
 OtherTab:AddToggle({
     Name = "Remove Hitbox",
     Default = false,
@@ -395,7 +476,11 @@ OtherTab:AddToggle({
                 for _ = 1, 100 do
                     wait()
                     pcall(function()
-                        character:WaitForChild("CollisionPart"):Destroy()
+                        local collisionPart = character:FindFirstChild("CollisionPart")
+                        if collisionPart then
+                            collisionPart:Destroy()
+                            logMessage("CollisionPart destroyed for " .. character.Name)
+                        end
                     end)
                 end
             end
@@ -442,17 +527,22 @@ local function moveToTarget(targetPosition)
         return
     end
 
+    -- Iterate through all waypoints and move the humanoid
     for _, waypoint in ipairs(path:GetWaypoints()) do
         if CollectCoinsEnabled or AutoDodgePlayersEnabled then
             humanoid:MoveTo(waypoint.Position)
-            humanoid.MoveToFinished:Wait()
+            local reached = humanoid.MoveToFinished:Wait()
+            if not reached then
+                logMessage("Failed to reach waypoint: " .. tostring(waypoint.Position))
+                return
+            end
         else
             break
         end
     end
 end
 
--- Dodge players with the bomb
+-- Dodge players carrying the bomb
 local function dodgePlayers()
     local char = LocalPlayer.Character
     if not char or not char:FindFirstChild("HumanoidRootPart") then return end
@@ -471,7 +561,7 @@ local function dodgePlayers()
     end
 
     if closestPlayer then
-        -- Move in the opposite direction
+        -- Calculate direction to move away from the player
         local dodgeDirection = (char.HumanoidRootPart.Position - closestPlayer.Character.HumanoidRootPart.Position).unit
         local targetPosition = char.HumanoidRootPart.Position + dodgeDirection * PlayerDodgeDistance
         if isWithinSafeArea(targetPosition) then
@@ -481,27 +571,55 @@ local function dodgePlayers()
     end
 end
 
--- Collect coins
+-- Improved Auto-Collect Coins Function
 local function collectCoins()
     local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    if not char or not char:FindFirstChild("HumanoidRootPart") then
+        logMessage("Character or HumanoidRootPart not found; cannot collect coins.")
+        return
+    end
+
+    local humanoid = char:FindFirstChild("Humanoid")
+    if not humanoid then
+        logMessage("Humanoid not found; cannot move to coins.")
+        return
+    end
 
     local closestCoin = nil
     local closestDistance = math.huge
+    local rootPos = char.HumanoidRootPart.Position
 
-    for _, coin in pairs(workspace:GetChildren()) do
-        if coin:IsA("Part") and coin.Name == "Coin" then
-            local distance = (char.HumanoidRootPart.Position - coin.Position).magnitude
-            if distance < closestDistance and isWithinSafeArea(coin.Position) then
-                closestDistance = distance
-                closestCoin = coin
+    -- Search for coins using GetDescendants to include nested objects
+    for _, item in pairs(workspace:GetDescendants()) do
+        -- Adjust the part types as needed
+        if (item:IsA("Part") or item:IsA("MeshPart") or item:IsA("UnionOperation")) and item.Name == "Coin" then
+            -- Optional: Use CollectionService tags for efficiency
+            -- if not CollectionService:HasTag(item, "Coin") then continue end
+
+            -- Check if the coin is within the Safe Area
+            if isWithinSafeArea(item.Position) then
+                local distance = (rootPos - item.Position).magnitude
+                -- Find the closest coin
+                if distance < closestDistance then
+                    closestDistance = distance
+                    closestCoin = item
+                end
             end
         end
     end
 
     if closestCoin then
+        logMessage(string.format("Closest coin found '%s' at distance: %d studs", closestCoin.Name, math.floor(closestDistance)))
+
+        -- Move to the coin's position using Pathfinding
         moveToTarget(closestCoin.Position)
-        logMessage("Moved to collect coin at distance: " .. math.floor(closestDistance))
+
+        -- Optional: Wait briefly to ensure collision scripts register the collection
+        wait(0.3)
+        logMessage("Attempted to collect the coin.")
+    else
+        -- If no coin was found, log a message or do nothing
+        logMessage("No coins found within the Safe Area.")
     end
 end
 
@@ -511,7 +629,22 @@ end
 
 RunService.Stepped:Connect(function()
     -- Update Bomb Timer every frame
-    updateBombTimer()
+    -- Iterate through all players to update their bomb timers
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then -- Exclude local player if needed
+            local char = player.Character
+            if char then
+                local bomb = char:FindFirstChild("Bomb")
+                if bomb and bomb:FindFirstChild("BombTimeLeft") then
+                    local timeLeft = bomb.BombTimeLeft.Value
+                    updatePlayerBombTimer(player, timeLeft)
+                else
+                    -- If the player doesn't have a bomb, reset the timer display
+                    updatePlayerBombTimer(player, "N/A")
+                end
+            end
+        end
+    end
 
     if Character and Character:FindFirstChild("HumanoidRootPart") then
         -- Auto Dodge
