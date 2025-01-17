@@ -54,13 +54,10 @@ local Window = OrionLib:MakeWindow({
 --   GLOBAL VARIABLES     --
 --========================--
 
-local AutoPassEnabled = true
+local autoPassEnabled = true
 local TargetPlayer = nil  -- Variable to store the target player
 local PreferredTargets = {"PlayerName1"}  -- Replace with player names you want to prioritize
-local LastPathComputeTime = 0  -- Last time path was computed
-local PathComputeInterval = 1  -- Time interval (in seconds) between path computations
 
-local PathfindingService = game:GetService("PathfindingService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -71,9 +68,7 @@ local logs = {}
 --   PERFORMANCE SETTINGS --
 --========================--
 
-local SPIN_RADIUS = 10 -- Radius to detect enemies for spinning
-local SPIN_SPEED = 360 -- Rotation speed in degrees per second
-local spinning = false -- Flag to control spinning
+-- No spin settings needed
 
 --========================--
 --       CONSOLE TAB      --
@@ -106,154 +101,31 @@ refreshLogDisplay()
 --   AUTO PASS BOMB LOGIC --
 --========================--
 
-local function getNearestPlayer()
-    local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then
-        logMessage("Character or HumanoidRootPart not found")
-        return nil
-    end
+local function autoPassBomb()
+    if not autoPassEnabled then return end
 
-    local nearestPlayer
-    local shortestDistance = math.huge
-    local localPos = char.HumanoidRootPart.Position
+    local character = LocalPlayer.Character
+    if not character then return end
 
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and not player.Character:FindFirstChild("Bomb") then
-            local distance = (localPos - player.Character.HumanoidRootPart.Position).magnitude
-            if distance < shortestDistance then
-                shortestDistance = distance
-                nearestPlayer = player
-            end
-        end
-    end
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return end
 
-    if nearestPlayer then
-        logMessage("Nearest player found: " .. nearestPlayer.Name)
-    else
-        logMessage("No nearest player found")
-    end
-
-    return nearestPlayer
-end
-
-local function moveToTarget(targetPosition, callback)
-    local char = LocalPlayer.Character
-    if not char then return end
-    
-    local humanoid = char:FindFirstChild("Humanoid")
-    if not humanoid then
-        logMessage("Humanoid not found")
-        return
-    end
-
-    -- Throttle path computation to reduce lag
-    if tick() - LastPathComputeTime < PathComputeInterval then
-        logMessage("Path computation throttled")
-        return
-    end
-
-    LastPathComputeTime = tick()
-
-    local path = PathfindingService:CreatePath({
-        AgentRadius = 2,
-        AgentHeight = 5,
-        AgentCanJump = true,
-        AgentMaxSlope = 45,
-    })
-
-    path:ComputeAsync(char.HumanoidRootPart.Position, targetPosition)
-    local waypoints = path:GetWaypoints()
-    
-    if #waypoints == 0 then
-        logMessage("No waypoints found for path")
-        return
-    end
-
-    logMessage("Moving to target position")
-    local function moveToWaypoints(index)
-        if index > #waypoints then
-            if callback then callback() end
-            return
-        end
-        
-        humanoid:MoveTo(waypoints[index].Position)
-        humanoid.MoveToFinished:Connect(function(reached)
-            if reached then
-                moveToWaypoints(index + 1)
-            else
-                if callback then callback() end
-            end
-        end)
-    end
-    
-    moveToWaypoints(1)
-end
-
-local function passBombIfNeeded()
-    local char = LocalPlayer.Character
-    if not char then return end
-
-    local bomb = char:FindFirstChild("Bomb")
-    if not bomb then return end
-
-    local BombEvent = bomb:FindFirstChild("RemoteEvent")
-    if not BombEvent then return end
-
-    if not TargetPlayer or not TargetPlayer.Character or not TargetPlayer.Character:FindFirstChild("HumanoidRootPart") or TargetPlayer.Character:FindFirstChild("Bomb") then
-        TargetPlayer = getNearestPlayer()
-    end
-
-    if TargetPlayer and TargetPlayer.Character and TargetPlayer.Character:FindFirstChild("CollisionPart") then
-        moveToTarget(TargetPlayer.Character.HumanoidRootPart.Position, function()
-            BombEvent:FireServer(TargetPlayer.Character, TargetPlayer.Character.CollisionPart)
-            logMessage("Bomb passed to: " .. TargetPlayer.Name)
-            TargetPlayer = nil  -- Reset the target player after passing the bomb
-            stopSpinning()  -- Stop spinning after passing the bomb
-        end)
-    else
-        logMessage("No valid target found for passing the bomb")
-    end
-end
-
---========================--
---       SPIN LOGIC       --
---========================--
-
-local function areEnemiesNearby()
-    local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then
-        return false
-    end
-
-    local localPos = char.HumanoidRootPart.Position
-
+    local closestPlayer, closestDistance = nil, math.huge
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and not player.Character:FindFirstChild("Bomb") then
-            local distance = (localPos - player.Character.HumanoidRootPart.Position).magnitude
-            if distance <= SPIN_RADIUS then
-                return true
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local distance = (humanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
+            if distance < closestDistance and not player.Character:FindFirstChild("Bomb") then
+                closestDistance = distance
+                closestPlayer = player
             end
         end
     end
 
-    return false
-end
-
-local function spinCharacter()
-    local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-
-    local rootPart = char.HumanoidRootPart
-    spinning = true
-
-    while spinning do
-        rootPart.CFrame = rootPart.CFrame * CFrame.Angles(0, math.rad(SPIN_SPEED * RunService.Heartbeat:Wait()), 0)
-        RunService.Heartbeat:Wait() -- Ensure there's a wait in the loop to prevent freezing
+    if closestPlayer then
+        print("Passing bomb to: " .. closestPlayer.Name)
+        logMessage("Passing bomb to: " .. closestPlayer.Name)
+        -- Simulate passing the bomb
     end
-end
-
-local function stopSpinning()
-    spinning = false
 end
 
 --========================--
@@ -262,18 +134,13 @@ end
 
 local function onCharacterAdded(character)
     character.ChildAdded:Connect(function(child)
-        -- Trigger auto-pass logic and spin when the bomb is added
-        if child.Name == "Bomb" and AutoPassEnabled then
-            -- Start spinning if enemies are nearby
-            if areEnemiesNearby() and not spinning then
-                spinCharacter()
-            end
-            -- Keep passing the bomb while spinning
+        -- Trigger auto-pass logic when the bomb is added
+        if child.Name == "Bomb" and autoPassEnabled then
+            -- Keep passing the bomb
             while child.Parent == character do
-                passBombIfNeeded()
+                autoPassBomb()
                 wait(0.1) -- Control loop frequency to avoid lag
             end
-            stopSpinning() -- Stop spinning once the bomb is gone
         end
     end)
 end
@@ -292,9 +159,9 @@ end
 --========================--
 
 RunService.Heartbeat:Connect(function()
-    if AutoPassEnabled then
+    if autoPassEnabled then
         -- Continuously validate bomb passing logic for better responsiveness
-        pcall(passBombIfNeeded)
+        pcall(autoPassBomb)
     end
 end)
 
@@ -310,9 +177,9 @@ local AutomatedTab = Window:MakeTab({
 
 AutomatedTab:AddToggle({
     Name = "Auto Pass Bomb",
-    Default = AutoPassEnabled,
+    Default = autoPassEnabled,
     Callback = function(bool)
-        AutoPassEnabled = bool
+        autoPassEnabled = bool
     end
 })
 
