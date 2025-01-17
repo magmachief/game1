@@ -213,7 +213,8 @@ local function passBombIfNeeded()
     local BombEvent = bomb:FindFirstChild("RemoteEvent")
     if not BombEvent then return end
 
-    local validPreferred, fallbackList = getValidPlayers()
+    local bombTimeLeft = bomb:FindFirstChild("BombTimeLeft") and bomb.BombTimeLeft.Value or 999
+    local validPreferred, fallbackList = getValidPlayers(bombTimeLeft)
     local target = nil
 
     -- Decide target based on preference or fallback
@@ -545,7 +546,7 @@ RunService.Stepped:Connect(function()
             pcall(dodgePlayers)
         end
 
-        -- Collect Coins
+       -- Collect Coins
         if CollectCoinsEnabled then
             pcall(collectCoins)
         end
