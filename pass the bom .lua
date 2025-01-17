@@ -2,8 +2,9 @@
     Ultimate "Pass the Bomb" Script
     ====================================
     Features:
-    1. Enhanced Auto Pass Bomb logic with nearest player targeting.
+    1. Enhanced Auto Pass Bomb logic with nearest player targeting and locking.
     2. Comprehensive UI with OrionLib.
+    3. Detailed logs and console for debugging.
 --]]
 
 --========================--
@@ -20,10 +21,10 @@ ScreenGui.ResetOnSpawn = false
 local Toggle = Instance.new("ImageButton")
 Toggle.Name = "Toggle"
 Toggle.Parent = ScreenGui
-Toggle.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-Toggle.Position = UDim2.new(0.5, -30, 0, 50)
-Toggle.Size = UDim2.new(0, 60, 0, 60)
-Toggle.Image = "rbxassetid://18594014746"
+Toggle.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Red background
+Toggle.Position = UDim2.new(0.5, -30, 0, 50) -- Positioned near the top center
+Toggle.Size = UDim2.new(0, 60, 0, 60) -- 60x60 pixels
+Toggle.Image = "rbxassetid://18594014746" -- Replace with your desired image asset ID
 Toggle.ScaleType = Enum.ScaleType.Fit
 
 -- Make the Toggle Button Circular
@@ -45,8 +46,8 @@ local Window = OrionLib:MakeWindow({
     IntroText = "Yon Menu",
     SaveConfig = true,
     ConfigFolder = "YonMenu_Ultimate",
-    IntroIcon = "rbxassetid://9876543210",
-    Icon = "rbxassetid://9876543210",
+    IntroIcon = "rbxassetid://9876543210",  -- Replace with your desired intro icon ID
+    Icon = "rbxassetid://9876543210",       -- Replace with your desired window icon ID
 })
 
 --========================--
@@ -54,13 +55,42 @@ local Window = OrionLib:MakeWindow({
 --========================--
 
 local AutoPassEnabled = true
+local TargetPlayer = nil  -- Variable to store the target player
 local PreferredTargets = {"PlayerName1"}  -- Replace with player names you want to prioritize
-local CheckInterval = 0.5  -- Time in seconds between each check
 
 local PathfindingService = game:GetService("PathfindingService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+
+local logs = {}
+
+--========================--
+--       CONSOLE TAB      --
+--========================--
+
+local ConsoleTab = Window:MakeTab({
+    Name = "Console",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+local logDisplay
+
+local function refreshLogDisplay()
+    if logDisplay then
+        local combined = table.concat(logs, "\n")
+        logDisplay:Set(combined)
+    end
+end
+
+local function logMessage(msg)
+    table.insert(logs, "[" .. os.date("%X") .. "] " .. tostring(msg))
+    refreshLogDisplay()
+end
+
+logDisplay = ConsoleTab:AddParagraph("Execution Logs", "")
+refreshLogDisplay()
 
 --========================--
 --   AUTO PASS BOMB LOGIC --
@@ -135,12 +165,25 @@ local function passBombIfNeeded()
     local BombEvent = bomb:FindFirstChild("RemoteEvent")
     if not BombEvent then return end
 
-    local nearestPlayer = getNearestPlayer()
-    if nearestPlayer and nearestPlayer.Character and nearestPlayer.Character:FindFirstChild("CollisionPart") then
-        moveToTarget(nearestPlayer.Character.HumanoidRootPart.Position, function()
-            BombEvent:FireServer(nearestPlayer.Character, nearestPlayer.Character.CollisionPart)
+    if not TargetPlayer or not TargetPlayer.Character or not TargetPlayer.Character:FindFirstChild("HumanoidRootPart") or TargetPlayer.Character:FindFirstChild("Bomb") then
+        TargetPlayer = getNearestPlayer()
+    end
+
+    if TargetPlayer and TargetPlayer.Character and TargetPlayer.Character:FindFirstChild("CollisionPart") then
+        moveToTarget(TargetPlayer.Character.HumanoidRootPart.Position, function()
+            BombEvent:FireServer(TargetPlayer.Character, TargetPlayer.Character.CollisionPart)
+            TargetPlayer = nil  -- Reset the target player after passing the bomb
         end)
     end
+end
+
+local function onCharacterAdded(character)
+    character.ChildAdded:Connect(function(child)
+        if child.Name == "Bomb" and AutoPassEnabled then
+            TargetPlayer = getNearestPlayer()  -- Select a target when the player receives the bomb
+            passBombIfNeeded()  -- Attempt to pass the bomb immediately
+        end
+    end)
 end
 
 --========================--
@@ -275,13 +318,10 @@ OtherTab:AddToggle({
 --    MAIN GAME LOOP      --
 --========================--
 
-local lastCheckTime = 0
-RunService.Heartbeat:Connect(function()
-    if AutoPassEnabled and tick() - lastCheckTime >= CheckInterval then
-        passBombIfNeeded()
-        lastCheckTime = tick()
-    end
-end)
+LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
+if LocalPlayer.Character then
+    onCharacterAdded(LocalPlayer.Character)
+end
 
 --========================--
 --   TOGGLE MENU BUTTON   --
