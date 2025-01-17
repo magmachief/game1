@@ -72,7 +72,6 @@ local logs = {}
 local SPIN_RADIUS = 10 -- Radius to detect enemies for spinning
 local SPIN_SPEED = 360 -- Rotation speed in degrees per second
 local spinning = false -- Flag to control spinning
-local AutoPassEnabled = true -- Ensure autopass works when enabled
 
 --========================--
 --       CONSOLE TAB      --
@@ -182,6 +181,7 @@ local function passBombIfNeeded()
         moveToTarget(TargetPlayer.Character.HumanoidRootPart.Position, function()
             BombEvent:FireServer(TargetPlayer.Character, TargetPlayer.Character.CollisionPart)
             TargetPlayer = nil  -- Reset the target player after passing the bomb
+            stopSpinning()  -- Stop spinning after passing the bomb
         end)
     end
 end
@@ -395,15 +395,6 @@ OtherTab:AddToggle({
         end
     end
 })
-
---========================--
---    MAIN GAME LOOP      --
---========================--
-
-LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
-if LocalPlayer.Character then
-    onCharacterAdded(LocalPlayer.Character)
-end
 
 --========================--
 --   TOGGLE MENU BUTTON   --
