@@ -110,6 +110,10 @@ local function autoPassBomb()
     local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
     if not humanoidRootPart then return end
 
+    -- Check if the character has the bomb
+    local bomb = character:FindFirstChild("Bomb")
+    if not bomb then return end
+
     local closestPlayer, closestDistance = nil, math.huge
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
@@ -125,6 +129,7 @@ local function autoPassBomb()
         print("Passing bomb to: " .. closestPlayer.Name)
         logMessage("Passing bomb to: " .. closestPlayer.Name)
         -- Simulate passing the bomb
+        -- Example: BombEvent:FireServer(closestPlayer.Character, closestPlayer.Character.HumanoidRootPart)
     end
 end
 
