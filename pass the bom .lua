@@ -4,7 +4,6 @@
     Features:
     1. Enhanced Auto Pass Bomb logic with nearest player targeting.
     2. Comprehensive UI with OrionLib.
-    3. Detailed logs and console for debugging.
 --]]
 
 --========================--
@@ -56,42 +55,12 @@ local Window = OrionLib:MakeWindow({
 
 local AutoPassEnabled = true
 local PreferredTargets = {"PlayerName1"}  -- Replace with player names you want to prioritize
+local CheckInterval = 0.5  -- Time in seconds between each check
 
 local PathfindingService = game:GetService("PathfindingService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-
-local logs = {}
-
---========================--
---       CONSOLE TAB      --
---========================--
-
-local ConsoleTab = Window:MakeTab({
-    Name = "Console",
-    Icon = "rbxassetid://4483345998",
-    PremiumOnly = false
-})
-
-local logDisplay
-
-local function refreshLogDisplay()
-    if logDisplay then
-        local combined = table.concat(logs, "\n")
-        logDisplay:Set(combined)
-    end
-end
-
-local function logMessage(msg)
-    if #logs == 0 or logs[#logs] ~= msg then  -- Avoid spamming the same message
-        table.insert(logs, "[" .. os.date("%X") .. "] " .. tostring(msg))
-        refreshLogDisplay()
-    end
-end
-
-logDisplay = ConsoleTab:AddParagraph("Execution Logs", "")
-refreshLogDisplay()
 
 --========================--
 --   AUTO PASS BOMB LOGIC --
@@ -170,7 +139,6 @@ local function passBombIfNeeded()
     if nearestPlayer and nearestPlayer.Character and nearestPlayer.Character:FindFirstChild("CollisionPart") then
         moveToTarget(nearestPlayer.Character.HumanoidRootPart.Position, function()
             BombEvent:FireServer(nearestPlayer.Character, nearestPlayer.Character.CollisionPart)
-            logMessage("Bomb passed to nearest player: " .. nearestPlayer.Name)
         end)
     end
 end
@@ -190,7 +158,6 @@ AutomatedTab:AddToggle({
     Default = AutoPassEnabled,
     Callback = function(bool)
         AutoPassEnabled = bool
-        logMessage("AutoPassEnabled set to " .. tostring(bool))
     end
 })
 
@@ -209,7 +176,6 @@ OtherTab:AddToggle({
     Default = false,
     Callback = function(bool)
         SecureSpinEnabled = bool
-        logMessage("SecureSpinEnabled set to " .. tostring(bool))
 
         local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 
@@ -244,7 +210,6 @@ OtherTab:AddSlider({
     ValueName = "studs",
     Callback = function(value)
         SecureSpinDistance = value
-        logMessage("SecureSpinDistance set to " .. tostring(value))
     end
 })
 
@@ -253,7 +218,6 @@ OtherTab:AddToggle({
     Default = false,
     Callback = function(bool)
         AntiSlipperyEnabled = bool
-        logMessage("AntiSlipperyEnabled set to " .. tostring(bool))
 
         local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 
@@ -283,7 +247,6 @@ OtherTab:AddToggle({
     Default = false,
     Callback = function(bool)
         RemoveHitboxEnabled = bool
-        logMessage("RemoveHitboxEnabled set to " .. tostring(bool))
 
         if RemoveHitboxEnabled then
             local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
@@ -295,7 +258,6 @@ OtherTab:AddToggle({
                         local collisionPart = character:FindFirstChild("CollisionPart")
                         if collisionPart then
                             collisionPart:Destroy()
-                            logMessage("CollisionPart destroyed for " .. character.Name)
                         end
                     end)
                 end
@@ -313,9 +275,11 @@ OtherTab:AddToggle({
 --    MAIN GAME LOOP      --
 --========================--
 
+local lastCheckTime = 0
 RunService.Heartbeat:Connect(function()
-    if AutoPassEnabled then
+    if AutoPassEnabled and tick() - lastCheckTime >= CheckInterval then
         passBombIfNeeded()
+        lastCheckTime = tick()
     end
 end)
 
@@ -325,9 +289,7 @@ end)
 
 Toggle.MouseButton1Click:Connect(function()
     ScreenGui.Enabled = not ScreenGui.Enabled
-    logMessage("Menu toggled - Now: " .. (ScreenGui.Enabled and "Visible" or "Hidden"))
 end)
 
 -- Initialize OrionLib UI
 OrionLib:Init()
-logMessage("Yon Menu - Ultimate version initialized successfully!")
