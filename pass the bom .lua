@@ -1,12 +1,12 @@
 --[[
     Full "Pass the Bomb" Script with Enhanced Features:
     1. Enhanced Auto Pass Bomb logic with optional randomization and preferred targets.
-    2. Bomb Timer display above each player's name.
+    2. Bomb Timer display above only the player who has the bomb.
     3. Updates Log in the menu.
     4. Console tab to show execution logs.
     5. Retains original functionalities (Auto Dodge, Collect Coins, etc.).
     
-    This script utilizes BillboardGui to display bomb timers above player names without obstructing the main screen view.
+    This script utilizes BillboardGui to display bomb timers above the bomb holder's name without obstructing the main screen view.
 --]]
 
 --========================--
@@ -102,7 +102,7 @@ local UpdateLogTab = Window:MakeTab({
 -- List of version updates or changelogs
 UpdateLogTab:AddParagraph("Changelog", [[
 1. Added random/targeted auto pass logic.
-2. Implemented per-player bomb timer display above names.
+2. Implemented per-player bomb timer display above bomb holder's name.
 3. Introduced a console tab for execution logs.
 4. Enhanced user interface with OrionLib advanced features.
 5. Improved Auto Collect Coins functionality.
@@ -150,6 +150,10 @@ local function createBombTimerGui(player)
     local character = player.Character
     if not character or not character:FindFirstChild("Head") then return end
 
+    -- Check if the player has the bomb
+    local bomb = character:FindFirstChild("Bomb")
+    if not bomb then return end
+
     -- Create BillboardGui
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "BombTimerGui"
@@ -164,20 +168,41 @@ local function createBombTimerGui(player)
     timerLabel.Parent = billboard
     timerLabel.Size = UDim2.new(1, 0, 1, 0) -- Fill the BillboardGui
     timerLabel.BackgroundTransparency = 1 -- Transparent background
-    timerLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- White text
+    timerLabel.TextColor3 = Color3.fromRGB(255, 0, 0) -- Red text
     timerLabel.TextScaled = true
     timerLabel.Font = Enum.Font.SourceSansBold
     timerLabel.Text = "Bomb Timer: N/A"
 
     -- Store the GUI in the table
     playerBombTimers[player] = timerLabel
+
+    -- Listen for changes in the bomb's timer
+    local bombTimeValue = bomb:FindFirstChild("BombTimeLeft")
+    if bombTimeValue then
+        -- Initial timer display
+        updatePlayerBombTimer(player, bombTimeValue.Value)
+
+        -- Update timer whenever BombTimeLeft changes
+        bombTimeValue.Changed:Connect(function(newTime)
+            updatePlayerBombTimer(player, newTime)
+            -- Remove GUI if timer reaches zero or below
+            if newTime <= 0 then
+                removeBombTimerGui(player)
+                logMessage("Bomb has exploded for " .. player.Name)
+            end
+        end)
+    end
 end
 
 -- Function to update the bomb timer for a specific player
 local function updatePlayerBombTimer(player, timeLeft)
     local timerLabel = playerBombTimers[player]
     if timerLabel then
-        timerLabel.Text = "Bomb Timer: " .. tostring(timeLeft) .. "s"
+        if typeof(timeLeft) == "number" then
+            timerLabel.Text = "Bomb Timer: " .. tostring(math.floor(timeLeft)) .. "s"
+        else
+            timerLabel.Text = "Bomb Timer: N/A"
+        end
     end
 end
 
@@ -186,6 +211,7 @@ local function removeBombTimerGui(player)
     if playerBombTimers[player] then
         playerBombTimers[player]:Destroy()
         playerBombTimers[player] = nil
+        logMessage("Bomb Timer GUI removed for " .. player.Name)
     end
 end
 
@@ -193,9 +219,22 @@ end
 Players.PlayerAdded:Connect(function(player)
     -- Wait for the player's character to load
     player.CharacterAdded:Connect(function(character)
-        -- Create the Bomb Timer GUI for the new character
-        wait(1) -- Small delay to ensure character parts are loaded
-        createBombTimerGui(player)
+        -- Connect to Bomb addition
+        character.ChildAdded:Connect(function(child)
+            if child.Name == "Bomb" then
+                wait(0.5) -- Small delay to ensure Bomb properties are loaded
+                createBombTimerGui(player)
+                logMessage("Bomb received by " .. player.Name)
+            end
+        end)
+
+        -- Connect to Bomb removal
+        character.ChildRemoved:Connect(function(child)
+            if child.Name == "Bomb" then
+                removeBombTimerGui(player)
+                logMessage("Bomb removed from " .. player.Name)
+            end
+        end)
     end)
 end)
 
@@ -204,15 +243,30 @@ Players.PlayerRemoving:Connect(function(player)
     removeBombTimerGui(player)
 end)
 
--- Initialize Bomb Timers for existing players
+-- Initialize Bomb Timers for existing players who already have bombs
 for _, player in pairs(Players:GetPlayers()) do
     if player ~= LocalPlayer then -- Exclude local player if needed
-        if player.Character then
+        if player.Character and player.Character:FindFirstChild("Bomb") then
             createBombTimerGui(player)
+            logMessage("Initialized Bomb Timer for " .. player.Name)
         end
         player.CharacterAdded:Connect(function(character)
-            wait(1) -- Small delay to ensure character parts are loaded
-            createBombTimerGui(player)
+            -- Connect to Bomb addition
+            character.ChildAdded:Connect(function(child)
+                if child.Name == "Bomb" then
+                    wait(0.5) -- Small delay to ensure Bomb properties are loaded
+                    createBombTimerGui(player)
+                    logMessage("Bomb received by " .. player.Name)
+                end
+            end)
+
+            -- Connect to Bomb removal
+            character.ChildRemoved:Connect(function(child)
+                if child.Name == "Bomb" then
+                    removeBombTimerGui(player)
+                    logMessage("Bomb removed from " .. player.Name)
+                end
+            end)
         end)
     end
 end
