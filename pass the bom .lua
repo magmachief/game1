@@ -99,7 +99,7 @@ UpdateLogTab:AddParagraph("Changelog", [[
 2. Introduced a console tab for execution logs.
 3. Enhanced user interface with OrionLib advanced features.
 4. Improved Auto Collect Coins functionality.
-5. Working On better functionability of everything
+5. Added Auto Pass Closest Player functionality.
 ]])
 
 --========================--
@@ -288,6 +288,101 @@ AutomatedTab:AddToggle({
     end
 })
 
+-- Auto Pass Closest Player Toggle
+AutomatedTab:AddToggle({
+    Name = "Auto Pass Closest Player",
+    Default = AutoPassEnabled,
+    Callback = function(bool)
+        AutoPassEnabled = bool
+        if AutoPassEnabled then
+            saveSettings()
+            local PathfindingService = game:GetService("PathfindingService")
+            local LocalPlayer = game.Players.LocalPlayer
+            local Character = LocalPlayer.Character
+
+            game:GetService("RunService").Stepped:Connect(function()
+                if not AutoPassEnabled then return end
+                pcall(function()
+                    if LocalPlayer.Backpack:FindFirstChild("Bomb") then
+                        LocalPlayer.Backpack:FindFirstChild("Bomb").Parent = Character
+                    end
+
+                    if LocalPlayer.Character:FindFirstChild("Bomb") then
+                        local BombEvent = LocalPlayer.Character:FindFirstChild("Bomb"):FindFirstChild("RemoteEvent")
+
+                        -- Find the closest player without a bomb
+                        local closestPlayer = nil
+                        local closestDistance = math.huge
+
+                        for _, Player in next, game.Players:GetPlayers() do
+                            if Player ~= LocalPlayer and Player.Character and Player.Character.Parent == workspace and not Player.Character:FindFirstChild("Bomb") then
+                                local distance = (LocalPlayer.Character.HumanoidRootPart.Position - Player.Character.HumanoidRootPart.Position).magnitude
+                                if distance < closestDistance then
+                                    closestDistance = distance
+                                    closestPlayer = Player
+                                end
+                            end
+                        end
+
+                        -- Auto-pass the closest player by moving towards them and spinning when very close
+                        if closestPlayer then
+                            warn("Hitting " .. closestPlayer.Name)
+                            
+                            -- Move towards the closest player using pathfinding
+                            local targetPosition = closestPlayer.Character.HumanoidRootPart.Position
+                            local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+                            
+                            if humanoid then
+                                local path = PathfindingService:CreatePath({
+                                    AgentRadius = 2,
+                                    AgentHeight = 5,
+                                    AgentCanJump = true,
+                                    AgentJumpHeight = 10,
+                                    AgentMaxSlope = 45,
+                                    AgentCanClimb = false,
+                                    AgentCanSwim = false
+                                })
+                                path:ComputeAsync(LocalPlayer.Character.HumanoidRootPart.Position, targetPosition)
+                                local waypoints = path:GetWaypoints()
+
+                                for _, waypoint in ipairs(waypoints) do
+                                    if not AutoPassEnabled then break end
+                                    humanoid:MoveTo(waypoint.Position)
+                                    humanoid.MoveToFinished:Wait()
+                                end
+                            end
+
+                            -- Spin when very close to the player
+                            local function spinCharacter()
+                                local spinTime = 0
+                                while (LocalPlayer.Character.HumanoidRootPart.Position - targetPosition).magnitude <= SecureSpinDistance do
+                                    if not AutoPassEnabled then break end
+                                    LocalPlayer.Character.HumanoidRootPart.CFrame = LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(5), 0) -- Less intense spin
+                                    wait(0.2) -- Slower spin to seem legit
+                                    spinTime = spinTime + 0.2
+                                    if spinTime >= 1 then -- Spin for 1 second and then pause
+                                        break
+                                    end
+                                end
+                                wait(0.5) -- Wait for 0.5 seconds before resuming spin
+                            end
+
+                            -- Check if within range to pass the bomb
+                            if (LocalPlayer.Character.HumanoidRootPart.Position - targetPosition).magnitude <= SecureSpinDistance then
+                                spinCharacter()
+                                -- Fire the bomb event
+                                BombEvent:FireServer(closestPlayer.Character, closestPlayer.Character:FindFirstChild("CollisionPart"))
+                            end
+                        else
+                            print("No closest player found")
+                        end
+                    end
+                end)
+            end)
+        end
+    end
+})
+
 --========================--
 --       OTHERS TAB       --
 --========================--
@@ -444,7 +539,7 @@ local function moveToTarget(targetPosition)
         return
     end
 
-    -- Iterate through all waypoints and move the humanoid
+ -- Iterate through all waypoints and move the humanoid
     for _, waypoint in ipairs(path:GetWaypoints()) do
         if CollectCoinsEnabled or AutoDodgePlayersEnabled then
             humanoid:MoveTo(waypoint.Position)
