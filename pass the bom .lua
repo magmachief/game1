@@ -24,7 +24,8 @@ local Toggle = Instance.new("ImageButton")
 Toggle.Name = "Toggle"
 Toggle.Parent = ScreenGui
 Toggle.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Red background
-Toggle.Position = UDim2.new(0.5, -30, 0, 50) -- Positioned near the top center
+-- Updated Position: 5% from the left, 25% from the top
+Toggle.Position = UDim2.new(0.05, 0, 0.25, 0) 
 Toggle.Size = UDim2.new(0, 60, 0, 60) -- 60x60 pixels
 Toggle.Image = "rbxassetid://18594014746" -- Replace with your desired image asset ID
 Toggle.ScaleType = Enum.ScaleType.Fit
@@ -34,9 +35,23 @@ local Corner = Instance.new("UICorner")
 Corner.CornerRadius = UDim.new(0.5, 0)
 Corner.Parent = Toggle
 
+-- If you have multiple toggleable icons, repeat the above block with adjusted Positions
+-- For example:
+-- local Toggle2 = Instance.new("ImageButton")
+-- Toggle2.Name = "Toggle2"
+-- Toggle2.Parent = ScreenGui
+-- Toggle2.BackgroundColor3 = Color3.fromRGB(0, 255, 0) -- Green background
+-- Toggle2.Position = UDim2.new(0.05, 0, 0.35, 0) -- 35% from the top
+-- Toggle2.Size = UDim2.new(0, 60, 0, 60)
+-- Toggle2.Image = "rbxassetid://AnotherImageID"
+-- Toggle2.ScaleType = Enum.ScaleType.Fit
+-- 
+-- local Corner2 = Instance.new("UICorner")
+-- Corner2.CornerRadius = UDim.new(0.5, 0)
+-- Corner2.Parent = Toggle2
+
 -- Load OrionLib for UI
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/magmachief/Library-Ui/main/Orion%20Lib%20Transparent%20%20.lua"))()
-
 --========================--
 --  MAIN WINDOW CREATION  --
 --========================--
