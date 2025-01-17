@@ -54,9 +54,9 @@ local Window = OrionLib:MakeWindow({
 --========================--
 
 -- Feature Toggles
-local AutoDodgePlayersEnabled = true
+local AutoDodgePlayersEnabled = false
 local PlayerDodgeDistance = 15
-local CollectCoinsEnabled = true
+local CollectCoinsEnabled = false
 local AntiSlipperyEnabled = false
 local RemoveHitboxEnabled = false
 local AutoPassEnabled = false
@@ -99,6 +99,7 @@ UpdateLogTab:AddParagraph("Changelog", [[
 2. Introduced a console tab for execution logs.
 3. Enhanced user interface with OrionLib advanced features.
 4. Improved Auto Collect Coins functionality.
+5. Working On better functionability of everything
 ]])
 
 --========================--
