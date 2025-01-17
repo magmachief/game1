@@ -269,7 +269,8 @@ AutomatedTab:AddToggle({
 })
 
 -- Auto Pass Bomb Toggle
-AutomatedTab:AddToggle({
+--[[
+--AutomatedTab:AddToggle({
     Name = "Auto Pass Bomb",
     Default = AutoPassEnabled,
     Callback = function(bool)
@@ -277,6 +278,7 @@ AutomatedTab:AddToggle({
         logMessage("AutoPassEnabled set to " .. tostring(bool))
     end
 })
+]]
 
 -- Use Random Passing Toggle
 AutomatedTab:AddToggle({
@@ -324,7 +326,7 @@ AutomatedTab:AddToggle({
                             end
                         end
 
-                        -- Auto-pass the closest player by moving towards them and spinning when very close
+                        -- Auto-pass the closest player by moving towards them
                         if closestPlayer then
                             warn("Hitting " .. closestPlayer.Name)
                             
@@ -352,26 +354,11 @@ AutomatedTab:AddToggle({
                                 end
                             end
 
-                            -- Spin when very close to the player
-                            local function spinCharacter()
-                                local spinTime = 0
-                                while (LocalPlayer.Character.HumanoidRootPart.Position - targetPosition).magnitude <= SecureSpinDistance do
-                                    if not AutoPassEnabled then break end
-                                    LocalPlayer.Character.HumanoidRootPart.CFrame = LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(5), 0) -- Less intense spin
-                                    wait(0.2) -- Slower spin to seem legit
-                                    spinTime = spinTime + 0.2
-                                    if spinTime >= 1 then -- Spin for 1 second and then pause
-                                        break
-                                    end
-                                end
-                                wait(0.5) -- Wait for 0.5 seconds before resuming spin
-                            end
-
                             -- Check if within range to pass the bomb
                             if (LocalPlayer.Character.HumanoidRootPart.Position - targetPosition).magnitude <= SecureSpinDistance then
-                                spinCharacter()
-                                -- Fire the bomb event
+                                -- Fire the bomb event immediately
                                 BombEvent:FireServer(closestPlayer.Character, closestPlayer.Character:FindFirstChild("CollisionPart"))
+                                logMessage("Bomb passed to closest player: " .. closestPlayer.Name)
                             end
                         else
                             print("No closest player found")
@@ -382,6 +369,7 @@ AutomatedTab:AddToggle({
         end
     end
 })
+                     
 
 --========================--
 --       OTHERS TAB       --
