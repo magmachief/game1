@@ -61,7 +61,7 @@ local AntiSlipperyEnabled = false
 local RemoveHitboxEnabled = false
 local AutoPassEnabled = false
 local UseRandomPassing = false            -- Determines whether to pick a random target or first in list
-local PreferredTargets = {"PlayerName1"}  -- List of players you want to target first, if in range
+local PreferredTargets = {}               -- List of players you want to target first, if in range
 local SecureSpinEnabled = false
 local SecureSpinDistance = 5
 local DodgeDistance = 10
@@ -159,7 +159,6 @@ local function updateBombTimer()
         TimerLabel.Text = "Bomb Timer: N/A"
     end
 end
-
 --========================--
 --   AUTO PASS BOMB LOGIC --
 --========================--
@@ -340,6 +339,35 @@ AutomatedTab:AddToggle({
     end
 })
 
+-- Dropdown for Preferred Targets
+local function updatePreferredTargetsDropdown()
+    local options = {}
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            table.insert(options, player.Name)
+        end
+    end
+    
+    PreferredTargetsDropdown:Refresh(options, true)
+end
+
+local PreferredTargetsDropdown = AutomatedTab:AddDropdown({
+    Name = "Preferred Targets",
+    Default = "",
+    Options = {},
+    Callback = function(selected)
+        PreferredTargets = {selected}
+        logMessage("PreferredTargets set to " .. selected)
+    end
+})
+
+-- Update the Preferred Targets dropdown whenever players join or leave
+Players.PlayerAdded:Connect(updatePreferredTargetsDropdown)
+Players.PlayerRemoving:Connect(updatePreferredTargetsDropdown)
+
+-- Initial population of the dropdown
+updatePreferredTargetsDropdown()
+
 --========================--
 --       OTHERS TAB       --
 --========================--
@@ -509,64 +537,64 @@ local function dodgePlayers()
 end
 
 -- Collect coins
-local function collectCoins()
-    local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    local function collectCoins()
+        local char = LocalPlayer.Character
+        if not char or not char:FindFirstChild("HumanoidRootPart") then return end
 
-    local closestCoin = nil
-    local closestDistance = math.huge
+        local closestCoin = nil
+        local closestDistance = math.huge
 
-    for _, coin in pairs(workspace:GetChildren()) do
-        if coin:IsA("Part") and coin.Name == "Coin" then
-            local distance = (char.HumanoidRootPart.Position - coin.Position).magnitude
-            if distance < closestDistance and isWithinSafeArea(coin.Position) then
-                closestDistance = distance
-                closestCoin = coin
+        for _, coin in pairs(workspace:GetChildren()) do
+            if coin:IsA("Part") and coin.Name == "Coin" then
+                local distance = (char.HumanoidRootPart.Position - coin.Position).magnitude
+                if distance < closestDistance and isWithinSafeArea(coin.Position) then
+                    closestDistance = distance
+                    closestCoin = coin
+                end
             end
         end
-    end
 
-    if closestCoin then
-        moveToTarget(closestCoin.Position)
-        logMessage("Moved to collect coin at distance: " .. math.floor(closestDistance))
-    end
-end
-
---========================--
---       MAIN LOOP        --
---========================--
-
-RunService.Stepped:Connect(function()
-    -- Update Bomb Timer every frame
-    updateBombTimer()
-
-    if Character and Character:FindFirstChild("HumanoidRootPart") then
-        -- Auto Dodge
-        if AutoDodgePlayersEnabled then
-            pcall(dodgePlayers)
-        end
-
-       -- Collect Coins
-        if CollectCoinsEnabled then
-            pcall(collectCoins)
-        end
-
-        -- Auto Pass Bomb
-        if AutoPassEnabled then
-            pcall(passBombIfNeeded)
+        if closestCoin then
+            moveToTarget(closestCoin.Position)
+            logMessage("Moved to collect coin at distance: " .. math.floor(closestDistance))
         end
     end
-end)
 
---========================--
---   TOGGLE MENU BUTTON   --
---========================--
+    --========================--
+    --       MAIN LOOP        --
+    --========================--
 
-Toggle.MouseButton1Click:Connect(function()
-    ScreenGui.Enabled = not ScreenGui.Enabled
-    logMessage("Menu toggled - Now: " .. (ScreenGui.Enabled and "Visible" or "Hidden"))
-end)
+    RunService.Stepped:Connect(function()
+        -- Update Bomb Timer every frame
+        updateBombTimer()
 
--- Initialize OrionLib UI
-OrionLib:Init()
-logMessage("Yon Menu Initialized Successfully")
+        if Character and Character:FindFirstChild("HumanoidRootPart") then
+            -- Auto Dodge
+            if AutoDodgePlayersEnabled then
+                pcall(dodgePlayers)
+            end
+
+            -- Collect Coins
+            if CollectCoinsEnabled then
+                pcall(collectCoins)
+            end
+
+            -- Auto Pass Bomb
+            if AutoPassEnabled then
+                pcall(passBombIfNeeded)
+            end
+        end
+    end)
+
+    --========================--
+    --   TOGGLE MENU BUTTON   --
+    --========================--
+
+    Toggle.MouseButton1Click:Connect(function()
+        ScreenGui.Enabled = not ScreenGui.Enabled
+        logMessage("Menu toggled - Now: " .. (ScreenGui.Enabled and "Visible" or "Hidden"))
+    end)
+
+    -- Initialize OrionLib UI
+    OrionLib:Init()
+    logMessage("Yon Menu Initialized Successfully")
