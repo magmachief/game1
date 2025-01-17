@@ -110,10 +110,6 @@ local function autoPassBomb()
     local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
     if not humanoidRootPart then return end
 
-    -- Check if the character has the bomb
-    local bomb = character:FindFirstChild("Bomb")
-    if not bomb then return end
-
     local closestPlayer, closestDistance = nil, math.huge
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
@@ -127,48 +123,9 @@ local function autoPassBomb()
 
     if closestPlayer then
         print("Passing bomb to: " .. closestPlayer.Name)
-        logMessage("Passing bomb to: " .. closestPlayer.Name)
         -- Simulate passing the bomb
-        -- Example: BombEvent:FireServer(closestPlayer.Character, closestPlayer.Character.HumanoidRootPart)
     end
 end
-
---========================--
---      EVENT HANDLERS    --
---========================--
-
-local function onCharacterAdded(character)
-    character.ChildAdded:Connect(function(child)
-        -- Trigger auto-pass logic when the bomb is added
-        if child.Name == "Bomb" and autoPassEnabled then
-            -- Keep passing the bomb
-            while child.Parent == character do
-                autoPassBomb()
-                wait(0.1) -- Control loop frequency to avoid lag
-            end
-        end
-    end)
-end
-
---========================--
---    INITIALIZATION      --
---========================--
-
-LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
-if LocalPlayer.Character then
-    onCharacterAdded(LocalPlayer.Character)
-end
-
---========================--
---  GAME LOOP (Optional)  --
---========================--
-
-RunService.Heartbeat:Connect(function()
-    if autoPassEnabled then
-        -- Continuously validate bomb passing logic for better responsiveness
-        pcall(autoPassBomb)
-    end
-end)
 
 --========================--
 --       AUTOMATED TAB    --
@@ -305,6 +262,8 @@ OtherTab:AddToggle({
 Toggle.MouseButton1Click:Connect(function()
     ScreenGui.Enabled = not ScreenGui.Enabled
 end)
-
+RunService.Heartbeat:Connect(function()
+    autoPassBomb()
+    end)
 -- Initialize OrionLib UI
 OrionLib:Init()
