@@ -99,7 +99,7 @@ UpdateLogTab:AddParagraph("Changelog", [[
 2. Introduced a console tab for execution logs.
 3. Enhanced user interface with OrionLib advanced features.
 4. Improved Auto Collect Coins functionality.
-5. Added Auto Pass Closest Player functionality.
+5. Merged Auto Pass Bomb and Auto Pass Closest Player functionalities.
 ]])
 
 --========================--
@@ -268,31 +268,9 @@ AutomatedTab:AddToggle({
     end
 })
 
--- Auto Pass Bomb Toggle
---[[
---AutomatedTab:AddToggle({
+-- Unified Auto Pass Bomb Toggle
+AutomatedTab:AddToggle({
     Name = "Auto Pass Bomb",
-    Default = AutoPassEnabled,
-    Callback = function(bool)
-        AutoPassEnabled = bool
-        logMessage("AutoPassEnabled set to " .. tostring(bool))
-    end
-})
-]]
-
--- Use Random Passing Toggle
-AutomatedTab:AddToggle({
-    Name = "Use Random Passing",
-    Default = UseRandomPassing,
-    Callback = function(bool)
-        UseRandomPassing = bool
-        logMessage("UseRandomPassing set to " .. tostring(bool))
-    end
-})
-
--- Auto Pass Closest Player Toggle
-AutomatedTab:AddToggle({
-    Name = "Auto Pass Closest Player",
     Default = AutoPassEnabled,
     Callback = function(bool)
         AutoPassEnabled = bool
@@ -359,6 +337,9 @@ AutomatedTab:AddToggle({
                                 -- Fire the bomb event immediately
                                 BombEvent:FireServer(closestPlayer.Character, closestPlayer.Character:FindFirstChild("CollisionPart"))
                                 logMessage("Bomb passed to closest player: " .. closestPlayer.Name)
+                                -- Reset any necessary variables or states
+                                closestPlayer = nil
+                                closestDistance = math.huge
                             end
                         else
                             print("No closest player found")
@@ -369,7 +350,6 @@ AutomatedTab:AddToggle({
         end
     end
 })
-                     
 
 --========================--
 --       OTHERS TAB       --
@@ -564,62 +544,13 @@ local function dodgePlayers()
         -- Calculate direction to move away from the player
         local dodgeDirection = (char.HumanoidRootPart.Position - closestPlayer.Character.HumanoidRootPart.Position).unit
         local targetPosition = char.HumanoidRootPart.Position + dodgeDirection * PlayerDodgeDistance
+
         if isWithinSafeArea(targetPosition) then
             moveToTarget(targetPosition)
             logMessage("Dodged player with bomb: " .. closestPlayer.Name)
+        else
+            logMessage("Target position is outside the safe area.")
         end
-    end
-end
-
--- Improved Auto-Collect Coins Function
-local function collectCoins()
-    local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then
-        logMessage("Character or HumanoidRootPart not found; cannot collect coins.")
-        return
-    end
-
-    local humanoid = char:FindFirstChild("Humanoid")
-    if not humanoid then
-        logMessage("Humanoid not found; cannot move to coins.")
-        return
-    end
-
-    local closestCoin = nil
-    local closestDistance = math.huge
-    local rootPos = char.HumanoidRootPart.Position
-
-    -- Search for coins using GetDescendants to include nested objects
-    for _, item in pairs(workspace:GetDescendants()) do
-        -- Adjust the part types as needed
-        if (item:IsA("Part") or item:IsA("MeshPart") or item:IsA("UnionOperation")) and item.Name == "Coin" then
-            -- Optional: Use CollectionService tags for efficiency
-            -- if not CollectionService:HasTag(item, "Coin") then continue end
-
-            -- Check if the coin is within the Safe Area
-            if isWithinSafeArea(item.Position) then
-                local distance = (rootPos - item.Position).magnitude
-                -- Find the closest coin
-                if distance < closestDistance then
-                    closestDistance = distance
-                    closestCoin = item
-                end
-            end
-        end
-    end
-
-    if closestCoin then
-        logMessage(string.format("Closest coin found '%s' at distance: %d studs", closestCoin.Name, math.floor(closestDistance)))
-
-        -- Move to the coin's position using Pathfinding
-        moveToTarget(closestCoin.Position)
-
-        -- Optional: Wait briefly to ensure collision scripts register the collection
-        wait(0.3)
-        logMessage("Attempted to collect the coin.")
-    else
-        -- If no coin was found, log a message or do nothing
-        logMessage("No coins found within the Safe Area.")
     end
 end
 
